@@ -1,0 +1,8 @@
+{
+    "amxxpawn.compiler.outputPath": "C:\\Users\\Rashaun\\Desktop\\scripting\\compiled",
+    "amxxpawn.compiler.executablePath": "C:\\Users\\Rashaun\\Desktop\\scripting\\compileUTF8.exe",
+    "amxxpawn.compiler.showInfoMessages": true,
+    "amxxpawn.compiler.includePaths": [
+        "C:\\Users\\Rashaun\\Desktop\\scripting\\include"
+    ]
+}

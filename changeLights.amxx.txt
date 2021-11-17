@@ -1,0 +1,198 @@
+new TeamName[4][0] =
+{
+	{
+		0, ...
+	},
+	{
+		84, ...
+	},
+	{
+		67, ...
+	},
+	{
+		83, ...
+	}
+};
+new lightLevel[4][0] =
+{
+	{
+		103, ...
+	},
+	{
+		122, ...
+	},
+	{
+		48, ...
+	},
+	{
+		109, ...
+	}
+};
+new lightLevelZH[4][0] =
+{
+	{
+		229, ...
+	},
+	{
+		229, ...
+	},
+	{
+		233, ...
+	},
+	{
+		233, ...
+	}
+};
+new playerLight[33];
+ColorChat(id, Color:type, msg[])
+{
+	new message[256];
+	switch (type)
+	{
+		case 1:
+		{
+			message[0] = 1;
+		}
+		case 2:
+		{
+			message[0] = 4;
+		}
+		default:
+		{
+			message[0] = 3;
+		}
+	}
+	vformat(message[1], 251, msg, 4);
+	message[192] = 0;
+	new team;
+	new ColorChange;
+	new index;
+	new MSG_Type;
+	if (id)
+	{
+		MSG_Type = 1;
+		index = id;
+	}
+	else
+	{
+		index = FindPlayer();
+		MSG_Type = 2;
+	}
+	team = get_user_team(index, {0}, TeamName);
+	ColorChange = ColorSelection(index, MSG_Type, type);
+	ShowColorMessage(index, MSG_Type, message);
+	if (ColorChange)
+	{
+		Team_Info(index, MSG_Type, TeamName[team]);
+	}
+	return 0;
+}
+
+ShowColorMessage(id, type, message[])
+{
+	static bool:saytext_used;
+	static get_user_msgid_saytext;
+	if (!saytext_used)
+	{
+		get_user_msgid_saytext = get_user_msgid("SayText");
+		saytext_used = true;
+	}
+	message_begin(type, get_user_msgid_saytext, 156, id);
+	write_byte(id);
+	write_string(message);
+	message_end();
+	return 0;
+}
+
+Team_Info(id, type, team[])
+{
+	static bool:teaminfo_used;
+	static get_user_msgid_teaminfo;
+	if (!teaminfo_used)
+	{
+		get_user_msgid_teaminfo = get_user_msgid("TeamInfo");
+		teaminfo_used = true;
+	}
+	message_begin(type, get_user_msgid_teaminfo, 156, id);
+	write_byte(id);
+	write_string(team);
+	message_end();
+	return 1;
+}
+
+ColorSelection(index, type, Color:Type)
+{
+	switch (Type)
+	{
+		case 4:
+		{
+			new var1 = TeamName;
+			return Team_Info(index, type, var1[0][var1]);
+		}
+		case 5:
+		{
+			return Team_Info(index, type, TeamName[1]);
+		}
+		case 6:
+		{
+			return Team_Info(index, type, TeamName[2]);
+		}
+		default:
+		{
+			return 0;
+		}
+	}
+}
+
+FindPlayer()
+{
+	new i = -1;
+	while (get_maxplayers() >= i)
+	{
+		i++;
+		if (is_user_connected(i))
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+
+public client_putinserver(id)
+{
+	playerLight[id] = 0;
+	return 0;
+}
+
+public set_player_light(id, LightStyle[])
+{
+	message_begin(8, 12, 156, id);
+	write_byte(TeamName);
+	write_string(LightStyle);
+	message_end();
+	return 0;
+}
+
+public clientLightChange(id)
+{
+	set_player_light(id, lightLevel[playerLight[id]]);
+	set_hudmessage(225, 140, TeamName, -1082130432, 1063675494, 2, 1065353216, 1069547520, 1008981770, 1045220557, -1);
+	ShowSyncHudMsg(id, CreateHudSyncObj(TeamName), "地图加亮模式: #%s", lightLevelZH[playerLight[id]]);
+	playerLight[id]++;
+	playerLight[id] %= 4;
+	return 0;
+}
+
+public plugin_init()
+{
+	register_plugin("Better Nightvision", "1.0", "Azuki dasuki~");
+	register_clcmd("say /n", "clientLightChange", -1, 864, -1);
+	set_task(1133903872, "taskPrintInfo", TeamName, 932, TeamName, 924, TeamName);
+	return 0;
+}
+
+public taskPrintInfo()
+{
+	ColorChat(0, Color:2, "[Holo]\x01输入 \x03/n \x01可\x03加亮地图\x01,帧数更加稳定!");
+	return 0;
+}
