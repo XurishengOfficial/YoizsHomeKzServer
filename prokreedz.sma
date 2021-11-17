@@ -559,7 +559,6 @@ enum _:DemoData {
 };
 
 // =================================================================================================
- 
 public plugin_init()
 {
 	register_plugin("ProKreedz", VERSION, "P & nucLeaR & p4ddY")
@@ -1147,22 +1146,22 @@ public Ham_PlayerPreThink(id)
 	if (is_user_alive(id))
 	{
 		// 读点数据存放在gc_DemoReplay[id]
-		if (timer_started[id] && gochecknumbers[id])
-		{
-			if (!IsPaused[id])
-			{
-				new ArrayData[DemoData];
-				pev(id, pev_origin, ArrayData[flBotPos]);
-				new Float:angle[3];
-				pev(id, pev_v_angle, angle)
-				pev(id, pev_velocity, ArrayData[flBotVel]);
-				ArrayData[flBotAngle][0] = _:angle[0];
-				ArrayData[flBotAngle][1] = _:angle[1];
-				ArrayData[iButton] = get_user_button(id)
-				ArrayPushArray(gc_DemoReplay[id], ArrayData);
-			}
-		}
-		// 存点数据放在g_DemoReplay
+		// if (timer_started[id] && gochecknumbers[id])
+		// {
+		// 	if (!IsPaused[id])
+		// 	{
+		// 		new ArrayData[DemoData];
+		// 		pev(id, pev_origin, ArrayData[flBotPos]);
+		// 		new Float:angle[3];
+		// 		pev(id, pev_v_angle, angle)
+		// 		pev(id, pev_velocity, ArrayData[flBotVel]);
+		// 		ArrayData[flBotAngle][0] = _:angle[0];
+		// 		ArrayData[flBotAngle][1] = _:angle[1];
+		// 		ArrayData[iButton] = get_user_button(id)
+		// 		ArrayPushArray(gc_DemoReplay[id], ArrayData);
+		// 	}
+		// }
+		// 裸跳数据放在g_DemoReplay
 		if (timer_started[id])
 		{
 			if (!IsPaused[id])
@@ -1287,9 +1286,9 @@ public ClCmd_UpdateReplay_c(id, Float:timer)
 	fputs(hFile, cty);
 	new ArrayData[DemoData];
 	new ArrayData2[DemoData];
-	for(new i; i < ArraySize(gc_DemoReplay[id]); i++)
+	for(new i; i < ArraySize(g_DemoReplay[id]); i++)
 	{
-		ArrayGetArray(gc_DemoReplay[id], i, ArrayData);	// 将g_DemoReplay[id][i]保存到ArrayData
+		ArrayGetArray(g_DemoReplay[id], i, ArrayData);	// 将g_DemoReplay[id][i]保存到ArrayData
 		ArrayData2[flBotAngle][0] = _:ArrayData[flBotAngle][0]
 		ArrayData2[flBotAngle][1] = _:ArrayData[flBotAngle][1]
 		ArrayData2[flBotVel][0] = _:ArrayData[flBotVel][0]
@@ -1299,20 +1298,20 @@ public ClCmd_UpdateReplay_c(id, Float:timer)
 		ArrayData2[flBotPos][1] = _:ArrayData[flBotPos][1]
 		ArrayData2[flBotPos][2] = _:ArrayData[flBotPos][2]
 		ArrayData2[iButton] = ArrayData[iButton]
-		if(i >= ArraySize(gc_DemoReplay[id]))
+		if(i >= ArraySize(g_DemoReplay[id]))
 		{
-			ArrayPushArray(gc_DemoReplay[id], ArrayData2);
+			ArrayPushArray(g_DemoReplay[id], ArrayData2);
 		}
 		else
 		{
-			ArraySetArray(gc_DemoReplay[id], i, ArrayData2);
+			ArraySetArray(g_DemoReplay[id], i, ArrayData2);
 		}
 		formatex(szData, sizeof(szData) - 1, "%f %f %f %f %f %f %f %f %d^n", ArrayData2[flBotAngle][0], ArrayData2[flBotAngle][1],
 		ArrayData2[flBotPos][0], ArrayData2[flBotPos][1], ArrayData2[flBotPos][2], ArrayData2[flBotVel][0], ArrayData2[flBotVel][1], ArrayData2[flBotVel][2], ArrayData2[iButton]);
 		fputs(hFile, szData);
 	}
 	fclose(hFile);
-	ArrayClear(gc_DemoReplay[id]);
+	ArrayClear(g_DemoReplay[id]);
 	set_task(2.0, "bot_overwriting_c")
 	return 0;
 }
@@ -4720,6 +4719,9 @@ public cmdWaterInvisible(id)
 
 //======================Semiclip / Invis==========================
 
+// host 接收包的玩家[使用屏蔽功能的玩家]
+// ent 服务器发送的实体
+// https://www.cnblogs.com/crsky/p/6881052.html
 public FM_client_AddToFullPack_Post(es, e, ent, host, hostflags, player, pSet) 
 { 
 	if( player )
@@ -4728,12 +4730,11 @@ public FM_client_AddToFullPack_Post(es, e, ent, host, hostflags, player, pSet)
 		{
 			if ( host != ent && get_orig_retval() && is_user_alive(host) ) 
     		{ 
-				set_es(es, ES_Solid, SOLID_NOT)
-				set_es(es, ES_RenderMode, kRenderTransAdd)
-				set_es(es, ES_RenderAmt, 55)
-				// set_es es, ES_RenderAmt, floatround(entity_range(host, ent) * 255.0 / 400, floatround_floor) ;
-				// set_es(es, ES_RenderAmt, get_pcvar_num(kz_semiclip_transparency))
-				
+				set_es(es, ES_Solid, SOLID_NOT);
+				// set_es(es, ES_RenderMode, kRenderTransAdd); //设置渲染为亮度逐渐增加?
+				set_es(es, ES_RenderMode, 1);	
+				set_es(es, ES_RenderAmt, floatround(entity_range(host, ent) * 700.0 / 400, floatround_floor)); // 设置渲染模式为距离越近越透明
+				// set_es(es, ES_RenderAmt, get_pcvar_num(kz_semiclip_transparency));
 			} 
 		}
 		if(gMarkedInvisible[ent] && gViewInvisible[host])
@@ -4816,6 +4817,7 @@ public Ham_CBasePlayer_PreThink_Post(id)
 
 	RefreshPlayersList() 
 
+	// 设置玩家是否可以相互传过 solid
 	if (get_pcvar_num(kz_semiclip) == 1)
 	{
 		for(new i = 0; i<g_iNum; i++) 
