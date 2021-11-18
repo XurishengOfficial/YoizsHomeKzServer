@@ -2,8 +2,8 @@
 *   NextMap Plugin
 *
 * by the AMX Mod X Development Team
-*  originally developed by OLO
-*
+* originally developed by OLO
+* last edited by Azuki daisuki~ 2021/11/17
 * This file is part of AMX Mod X.
 *
 *
@@ -68,7 +68,7 @@ public plugin_init()
 	if (!equal(g_mapCycle, szString2))
 		g_pos = 0	// mapcyclefile has been changed - go from first
 
-	readMapCycle(g_mapCycle, g_nextMap, 31)
+	readMapCycle2(g_mapCycle, g_nextMap, 31)	// 使用自定义的随机地图 by Azuki daisuki~
 	set_cvar_string("amx_nextmap", g_nextMap)
 	format(szString3, 31, "%s %d", g_mapCycle, g_pos)	// save lastmapcycle settings
 	set_localinfo("lastmapcycle", szString3)
@@ -87,7 +87,7 @@ public randomNextMap_admin(id) {
 public randomNextMap() {
 	readMapCycle2(g_mapCycle, g_nextMap, 31)
 	set_cvar_string("amx_nextmap", g_nextMap);
-	log_amx("Random next map is ", PLUGIN, g_nextMap);
+	log_amx("Random next map is %s", g_nextMap);
 }
 
 getNextMapName(szArg[], iMax)
@@ -168,6 +168,8 @@ stock bool:ValidMap(mapname[])
 	
 	return false;
 }
+
+// 使用随机读取并设置下张地图 相比于之前的版本 服务器崩溃后重启每次的结果都不一致
 readMapCycle2(szFileName[], szNext[], iNext) {
 	new szBuffer[32], szFirst[32];
 	new idx = 0;
