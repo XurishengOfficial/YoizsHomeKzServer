@@ -515,13 +515,28 @@ new bool:REC_AC[33];
 new bool:p_lang[33];
 new g_bitBots;
 
+enum _:DemoData {
+	Float:flBotAngle[2],
+	Float:flBotPos[3],
+	Float:flBotVel[3],
+	iButton
+};
+
+enum _:CheckPointData {
+	Float:flVAngle[3],
+	Float:flPos[3]
+}
+
+//======================= #MARK: CHECKPOINTS================================
+new Array:g_CheckPointArray[33];
+new g_CheckPointIndex[33];
+new g_MaxCheckPointIndex[33];
+new unDoCheckPoint[33][CheckPointData];
+
 //======================= #MARK: BOT & RECORD================================
 // PRO
 new Array:g_DemoPlaybot[1];
 new Array:g_DemoReplay[33];
-new Array:g_CheckPointArray[33];
-new g_CheckPointIndex[33];
-new g_MaxCheckPointIndex[33];
 new Float:g_ReplayBestRunTime;
 new Float:g_bestruntime;
 new g_ReplayName[32];
@@ -555,17 +570,7 @@ new gc_country[128];
 
 new g_szMapName[32];
 
-enum _:DemoData {
-	Float:flBotAngle[2],
-	Float:flBotPos[3],
-	Float:flBotVel[3],
-	iButton
-};
 
-enum _:CheckPointData {
-	Float:flVAngle[3],
-	Float:flPos[3]
-}
 
 // =================================================================================================
 public plugin_init()
@@ -635,10 +640,10 @@ public plugin_init()
 	register_clcmd("say /op","AdminMenu",KZ_LEVEL)
 	register_clcmd("say /tep", "Teleport")
 	register_clcmd("/cp","CheckPoint")
-	register_clcmd("/gc", "GoCheck1")
-	register_clcmd("/tp", "GoCheck1")
-	register_clcmd("/gcf","GoCheck1")
-	// register_clcmd("/gcf","GoCheck1")
+	register_clcmd("/gc", "GoCheck")
+	register_clcmd("/tp", "GoCheck")
+	register_clcmd("/gcf","GoCheck")
+	// register_clcmd("/gcf","GoCheck")
 	register_clcmd("+hook","hook_on",KZ_LEVEL)
 	register_clcmd("-hook","hook_off",KZ_LEVEL)	
 	register_clcmd("say /wr", "CmdSayWR")
@@ -646,7 +651,7 @@ public plugin_init()
 	register_clcmd("say /cr", "CmdSayCR")
 	register_clcmd("say /nt", "CmdSayCR")
 	register_clcmd("say /ntr", "CmdSayCR")
-	register_clcmd("/tp","GoCheck1")
+	register_clcmd("/tp","GoCheck")
 	register_clcmd("say menu","kz_menu")
 	register_clcmd("addtime", "ExtendTime", KZ_LEVEL)
 	
@@ -667,8 +672,8 @@ public plugin_init()
 	kz_register_saycmd("CheckPoint","CheckPoint",0)
 	kz_register_saycmd("chatorhud", "ChatHud", 0)
 	kz_register_saycmd("ct","ct",0)
-	kz_register_saycmd("gc", "GoCheck1",0)
-	kz_register_saycmd("gocheck", "GoCheck1",0)
+	kz_register_saycmd("gc", "GoCheck",0)
+	kz_register_saycmd("gocheck", "GoCheck",0)
 	kz_register_saycmd("god", "GodMode",0)
 	kz_register_saycmd("godmode", "GodMode", 0)
 	kz_register_saycmd("invis", "InvisMenu", 0)
@@ -706,12 +711,12 @@ public plugin_init()
 	kz_register_saycmd("start", "goStartPos", 0) 
 	kz_register_saycmd("stuck", "Stuck", 0)
 	kz_register_saycmd("ungocheck", "Stuck", 0)
-	kz_register_saycmd("teleport", "GoCheck1", 0)
+	kz_register_saycmd("teleport", "GoCheck", 0)
 	kz_register_saycmd("top15", "top15menu",0)
 	kz_register_saycmd("top10", "top15menu",0)
 	kz_register_saycmd("top", "top15menu",0)
 	kz_register_saycmd("top100", "top15menu",0)
-	kz_register_saycmd("tp", "GoCheck1",0)
+	kz_register_saycmd("tp", "GoCheck",0)
 	kz_register_saycmd("usp", "cmdUsp", 0)
 	kz_register_saycmd("version", "Version", 0)
 	kz_register_saycmd("weapons", "weapons", 0)
@@ -4481,12 +4486,12 @@ public CheckPoint(id)
 	checknumbers[id]++;
 
 	pev(id, pev_origin, curCheckPoint[flPos]);
-	client_print(id, print_chat, "g_CheckPointArray[id] size is %d, g_CheckPointIndex[id] is %d", ArraySize(g_CheckPointArray[id]), g_CheckPointIndex[id]);
+	// client_print(id, print_chat, "g_CheckPointArray[id] size is %d, g_CheckPointIndex[id] is %d", ArraySize(g_CheckPointArray[id]), g_CheckPointIndex[id]);
 	ArraySetArray(g_CheckPointArray[id], g_CheckPointIndex[id], curCheckPoint);
 	g_MaxCheckPointIndex[id] = max(g_MaxCheckPointIndex[id], g_CheckPointIndex[id]);
 	++g_CheckPointIndex[id];
 	g_CheckPointIndex[id] %= ArraySize(g_CheckPointArray[id]);
-	server_print("#Saved Check: g_CheckPointIndex[id] is %d", g_CheckPointIndex[id]);
+	// server_print("#Saved Check: g_CheckPointIndex[id] is %d", g_CheckPointIndex[id]);
 	//kz_chat(id, "%L", id, "KZ_CHECKPOINT", checknumbers[id])
 
 	return PLUGIN_HANDLED
@@ -4554,8 +4559,11 @@ public GoCheck(id)
 		return PLUGIN_HANDLED
 	}
 #endif	
-	new curCheckPoint[CheckPointData];
+	// 读点后用于取消读点 
+	pev(id, pev_origin, unDoCheckPoint[id][flPos]);
+	pev(id, pev_v_angle, unDoCheckPoint[id][flVAngle]);
 
+	new curCheckPoint[CheckPointData];
 	// e.g. 存点存在0 index++后指向 1, 读取时读取0
 	new curCheckPointIndex = g_CheckPointIndex[id] - 1;
 	if(curCheckPointIndex < 0) curCheckPointIndex = ArraySize(g_CheckPointArray[id]) - 1;
@@ -4566,7 +4574,6 @@ public GoCheck(id)
 		// set_pev( id, pev_angles, gCheckpointAngle[id]);
 		set_pev( id, pev_angles, curCheckPoint[flVAngle]);
 		set_pev( id, pev_fixangle, 1);
-		gc1[id] = false
 	}
 	
 	// 暂停读点设置坐标
@@ -4593,7 +4600,7 @@ public GoCheck(id)
 	engfunc( EngFunc_SetSize, id, {-16.0, -16.0, -18.0 }, { 16.0, 16.0, 32.0 } );
 	// set_pev(id, pev_origin, Checkpoints[ id ][ !g_bCpAlternate[id] ] );
 
-	server_print("GoCheck: curCheckPointIndex is %d, g_CheckPointIndex[id] is %d", curCheckPointIndex, g_CheckPointIndex[id]);
+	// server_print("GoCheck: curCheckPointIndex is %d, g_CheckPointIndex[id] is %d", curCheckPointIndex, g_CheckPointIndex[id]);
 	set_pev(id, pev_origin, curCheckPoint[flPos]);
 	
 	if (timer_started[id] && !IsPaused[id])
@@ -4610,14 +4617,6 @@ public GoCheck(id)
 	
 	return PLUGIN_HANDLED
 }
-
-public GoCheck1(id) 
-{
-	gc1[id] = true
-	GoCheck(id)
-	return PLUGIN_HANDLED
-}
-
 
 //# 返回上一个读点 目前只能返回一个
 public Stuck(id)
@@ -4696,7 +4695,8 @@ public Stuck(id)
 // 清除存点数组并初始化相关参数
 public reset_checkpoints_array(id) {
 	ArrayClear(g_CheckPointArray[id]);
-	new maxCheckPointsNum = get_cvar_num("kz_checkpoints_num");
+	new maxCheckPointsNum = get_pcvar_num(kz_checkpoints_num);
+	server_print("maxCheckPointsNum is %d", maxCheckPointsNum);
 	while(maxCheckPointsNum--) {
 		new emptyCheckPoint[CheckPointData];
 		ArrayPushArray(g_CheckPointArray[id], emptyCheckPoint);
@@ -4759,6 +4759,12 @@ public reset_checkpoints1(id)
 	return PLUGIN_HANDLED
 }
 
+public UndoGoCheck(id) {
+	if(!timer_started[id] || !gochecknumbers[id]) return;	//未读点 不做操作
+	set_pev(id, pev_origin, unDoCheckPoint[id][flPos] );
+	set_pev(id, pev_v_angle, unDoCheckPoint[id][flVAngle]);
+	return;
+}
 //===== Invis =======
 
 public cmdInvisible(id)
@@ -5865,7 +5871,7 @@ public client_disconnect(id)
 	GoPosed[id] = false
 	GoPosCp[id] = false
 	GoPosHp[id] = false
-	gc1[id] = false
+	gc1[id] = true;
 	user_has_scout[id] = false
 	remove_hook(id)
 	tptostart[id] = false
@@ -5915,7 +5921,7 @@ public client_putinserver(id)
 	GoPosed[id] = false
 	GoPosCp[id] = false
 	GoPosHp[id] = false
-	gc1[id] = false
+	gc1[id] = true;
 	tptostart[id] = false
 	tphook_user[id] = false
 	spec_user[id] = false
@@ -6432,6 +6438,8 @@ public Savepos_menu_handler(id, menu, item)
 }
 
 //============================================================================
+//						Climb Menu
+//============================================================================
 
 public JumpMenu(id)
 {
@@ -6440,11 +6448,12 @@ public JumpMenu(id)
 	formatex(title, 255, "\rClimb Menu")
 	new menu = menu_create(title, "JumpMenuHandler")  
 	
-	new msgcheck[64], msggocheck[64], msgpause[64], msggolastcheck[64]	//, msgctspec[64]
+	new msgcheck[64], msggocheck[64], msgpause[64], msggolastcheck[64], msgSaveAngle[64]	//, msgctspec[64]
 	formatex(msgcheck, 63, "%L - [\r#%i\w]", id, "KZ_CHECK_IS",  checknumbers[id])
 	formatex(msggocheck, 63, "%L - [\r#%i\w]", id, "KZ_GOCHECK_IS", gochecknumbers[id])
-	formatex(msggolastcheck, 63, "%L \r*最多返回\y%d\r个*^n", id, "KZ_JUMPMENU_MENU5", get_cvar_num("kz_checkpoints_num"));
-	formatex(msgpause, 63, "%L - [%s\w]^n", id, "KZ_PAUSE", IsPaused[id] ? "\yON" : "\rOFF")
+	formatex(msggolastcheck, 63, "%L \r*最多返回%d个*^n", id, "KZ_JUMPMENU_MENU5", get_cvar_num("kz_checkpoints_num"));
+	formatex(msgpause, 63, "%L - [%s\w]^n", id, "KZ_PAUSE", IsPaused[id] ? "\yON" : "\rOFF");
+	formatex(msgSaveAngle, 63, "读取存点角度 - [%s\w]", gc1[id] ? "\yON" : "\rOFF");
 	// formatex(msgctspec, 63, "%L^n", id, (cs_get_user_team(id) == CS_TEAM_CT) ? "KZ_SPECTATOR" : "KZ_CT")
 	
 	menu_additem( menu, msgcheck, "1" )
@@ -6452,11 +6461,13 @@ public JumpMenu(id)
 	menu_additem( menu, msggolastcheck, "3" )
 	// menu_vadditem(menu, "3", _, _, "%L^n", id, "KZ_JUMPMENU_MENU5")
 	menu_additem( menu, msgpause, "4" )
-	menu_vadditem(menu, "5", _, _, "%L", id, "KZ_JUMPMENU_MENU1")
-	menu_vadditem(menu, "6", _, _, "%L^n", id, "KZ_JUMPMENU_MENU7")
-	menu_additem( menu, "Usp/Knife", "7")
+	menu_vadditem(menu, "5", _, _, "%L^n", id, "KZ_JUMPMENU_MENU1")
+	
+	menu_additem( menu, ( timer_started[id] && gochecknumbers[id] )? "\yUndo GoCheck" : "\dUndo GoCheck", "6")
+	menu_additem( menu, msgSaveAngle, "7");	 																		// 是否保留存点角度
 	menu_vadditem(menu, "8", _, _, "%L", id, "KZ_JUMPMENU_MENU8")
-
+	// menu_vadditem(menu, "6", _, _, "%L^n", id, "KZ_JUMPMENU_MENU7")
+	// menu_additem( menu, "Usp/Knife", "7")
 	menu_display(id, menu, 0)
 	
 	return PLUGIN_HANDLED 
@@ -6484,7 +6495,7 @@ public JumpMenuHandler(id , menu, item)
 			JumpMenu(id)	
 		}
 		case 1:{
-			GoCheck1(id)
+			GoCheck(id)
 			JumpMenu(id)
 		}
 		case 2:{
@@ -6492,7 +6503,8 @@ public JumpMenuHandler(id , menu, item)
 			JumpMenu(id)
 		}
 		case 5:{
-			CheckPointStart(id)
+			// CheckPointStart(id)
+			UndoGoCheck(id);
 			JumpMenu(id)
 		}
 		case 7:{
@@ -6500,7 +6512,8 @@ public JumpMenuHandler(id , menu, item)
 			JumpMenu(id)
 		}
 		case 6:{
-			cmdUsp(id)
+			// cmdUsp(id)
+			gc1[id] = !gc1[id];
 			JumpMenu(id)
 		}
 	}
