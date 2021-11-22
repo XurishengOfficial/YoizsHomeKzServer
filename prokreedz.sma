@@ -4426,7 +4426,7 @@ public CheckPoint(id)
 		pev(id, pev_v_angle, curPos[flVAngle]);
 		ArraySetArray(g_CheckPointArray[id], 0, curPos);
 		ArraySetArray(g_CheckPointArray[id], 1, curPos);
-		client_print(id, print_chat, "size is %d", ArraySize(g_CheckPointArray[id]));
+		// client_print(id, print_chat, "size is %d", ArraySize(g_CheckPointArray[id]));
 		GoPosCp[id] = false
 		return PLUGIN_HANDLED
 	}
@@ -4696,7 +4696,7 @@ public Stuck(id)
 public reset_checkpoints_array(id) {
 	ArrayClear(g_CheckPointArray[id]);
 	new maxCheckPointsNum = get_pcvar_num(kz_checkpoints_num);
-	server_print("maxCheckPointsNum is %d", maxCheckPointsNum);
+	// server_print("maxCheckPointsNum is %d", maxCheckPointsNum);
 	while(maxCheckPointsNum--) {
 		new emptyCheckPoint[CheckPointData];
 		ArrayPushArray(g_CheckPointArray[id], emptyCheckPoint);
