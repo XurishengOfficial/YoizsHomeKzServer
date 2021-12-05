@@ -626,7 +626,7 @@ public plugin_init()
 	kz_sql_files = register_cvar("kz_sql_files", "") // Path of the PHP files
 	#else
 	// kz_webtop_url = register_cvar("kz_webtop_url", "http://60.205.191.245/amxmodx/kz/")		//My Servers by Perfectslife
-	kz_webtop_url = register_cvar("kz_webtop_url", "http://39.105.49.178:22")		//Top URL http://....
+	kz_webtop_url = register_cvar("kz_webtop_url", "http://60.205.191.245/addons/amxmodx/configs/kz")		//Top URL http://....
 	get_pcvar_string(kz_webtop_url, WEB_URL, 63)
 	#endif
 
@@ -1025,7 +1025,12 @@ public plugin_precache()
 }
 
 public test3(id) {
-	server_print("g_CheckPointArray size is %d", ArraySize(g_CheckPointArray[id]));
+	// server_print("g_CheckPointArray size is %d", ArraySize(g_CheckPointArray[id]));
+	// mapcycle.txt
+	new country[3];
+	new tmpIp[] = "223.72.93.125";
+	geoip_code2_ex(tmpIp, country);
+	client_print(0, print_chat, country);
 }
 public plugin_cfg()
 {
@@ -2383,6 +2388,7 @@ public CmdSayWR(id)
 		e_Whatmap = e_MapName
 	}
 
+	//WR 从本地的cstrike\data\records\xj.txt cc.txt
 	iFounds = GetRecordData( e_Whatmap, e_Author, e_Time,e_cnt, e_Extension, e_WhatFile );
 	cciFounds = ccGetRecordData( e_Whatmap, cce_Author, cce_Time,cce_cnt,cce_Extension, cce_WhatFile );
 	suiFounds = suGetRecordData( e_Whatmap, sue_Author, sue_Time,sue_cnt,sue_Extension, sue_WhatFile ); 
@@ -2411,15 +2417,18 @@ public CmdSayWR(id)
 			else 
 				format( XJExtension, 20, "%s","[Routine]") 
 			
+			// 设置ProTop网页
 			if( e_Time[ i ][ 0 ] == '*' )
 			{
-				format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> WR </font> <font color=#FF0004><b>**:**.**</b></font> <font color=#EEEEE0>by</font> <img src=%s/flags/err.png> <b>n/a </b><p><font color=#EEEEE0>Map of Website</font> Xtreme-Jumpst.eu",MapName, WEB_URL ); //web top
+				// format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> WR </font> <font color=#FF0004><b>**:**.**</b></font> <font color=#EEEEE0>by</font> <img src=%s/flags/err.png> <b>n/a </b><p><font color=#EEEEE0>Map of Website</font> Xtreme-Jumpst.eu",MapName, WEB_URL ); //web top
+				format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> WR </font> <font color=#FF0004><b>**:**.**</b></font> <font color=#EEEEE0>by</font> <img src = flags/err.png> <b>n/a </b><p><font color=#EEEEE0>Map of Website</font> Xtreme-Jumpst.eu",MapName); //web top
 				format(WRTimes, 400, "\dWR - **:**.** by n/a" ); //top menu
 				iLen += formatex( e_Message[ iLen ], 400 - iLen, "WR(XJ): **:**.** by n/a" ); //hud
 			}
 			else
 			{
-				format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> WR </font> <font color=#FF0004><b>%s</b></font> <font color=#EEEEE0>by</font> <img src=%s/flags/%s.png align=absmiddle height=32 width=32 /> <b>%s </b><p><font color=#EEEEE0>Record of Website</font> Xtreme-Jumpst.eu",MapName , e_Time[ i ], WEB_URL, e_cnt[ i ], e_Author[ i ] );		
+				// format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> WR </font> <font color=#FF0004><b>%s</b></font> <font color=#EEEEE0>by</font> <img src=%s/flags/%s.png align=absmiddle height=32 width=32 /> <b>%s </b><p><font color=#EEEEE0>Record of Website</font> Xtreme-Jumpst.eu",MapName , e_Time[ i ], WEB_URL, e_cnt[ i ], e_Author[ i ] );		
+				format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> WR </font> <font color=#FF0004><b>%s</b></font> <font color=#EEEEE0>by</font> <img src = flags/%s.png align=absmiddle height=32 width=32 /> <b>%s </b><p><font color=#EEEEE0>Record of Website</font> Xtreme-Jumpst.eu",MapName , e_Time[ i ], e_cnt[ i ], e_Author[ i ] );		
 				format(WRTimes, 400, "\dWR - \y%s \dby \y%s", e_Time[ i ], e_Author[ i ] );		
 				format(counwr, 31, "%s",e_cnt[i]); 
 				iLen += formatex( e_Message[iLen], 400 - iLen, "^n%s%s %s by %s [%s]",cce_CountryText,XJExtension, e_Time[i], e_Author[i],iRank());//e_cnt[i] 
@@ -2440,9 +2449,10 @@ public CmdSayWR(id)
 			else 
 				format( Extension, 20, "%s","[Routine]")
 			
-			if( cce_Time[ i ][ 0 ] == '*' )
+			if( cce_Time[ i ][ 0 ] == '*' )	// 没找到对应的CC记录
 			{
-				format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> WR </font> <font color=#FF0004><b>**:**.**</b></font> <font color=#EEEEE0>by</font> <img src=%s/flags/err.png> <b>n/a </b><p><font color=#EEEEE0>Map of Website</font> <font color=#4876FF>Cosy-climbing.net</font>",MapName ,WEB_URL ); //web top
+				// format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> WR </font> <font color=#FF0004><b>**:**.**</b></font> <font color=#EEEEE0>by</font> <img src=%s/flags/err.png> <b>n/a </b><p><font color=#EEEEE0>Map of Website</font> <font color=#4876FF>Cosy-climbing.net</font>",MapName ,WEB_URL ); //web top
+				format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> WR </font> <font color=#FF0004><b>**:**.**</b></font> <font color=#EEEEE0>by</font> <img src = flags/err.png> <b>n/a </b><p><font color=#EEEEE0>Map of Website</font> <font color=#4876FF>Cosy-climbing.net</font>", MapName); //web top
 				format(WRTimes, 400, "\dWR -  **:**.** by n/a" ); //top menu
 				iLen += formatex( e_Message[ iLen ], 400 - iLen, "WR[CC]: **:**.** by n/a" ); //hud
 			}
@@ -2450,7 +2460,8 @@ public CmdSayWR(id)
 			{
 				format(counwr, 31, "%s",cce_cnt[i]);
 				format(WRTimes, 400, "\dWR - \y%s \dby \y%s", cce_Time[ i ], cce_Author[ i ] );		
-				format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> WR </font> <font color=#FF0004><b>%s</b></font> <font color=#EEEEE0>by</font> <img src=%s/flags/%s.png align=absmiddle height=32 width=32 /> <b>%s </b><p><font color=#EEEEE0>Record of Website</font> <font color=#4876FF>Cosy-climbing.net</font>",MapName , cce_Time[ i ], WEB_URL, cce_cnt[ i ], cce_Author[ i ] );
+				// format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> WR </font> <font color=#FF0004><b>%s</b></font> <font color=#EEEEE0>by</font> <img src=%s/flags/%s.png align=absmiddle height=32 width=32 /> <b>%s </b><p><font color=#EEEEE0>Record of Website</font> <font color=#4876FF>Cosy-climbing.net</font>",MapName , cce_Time[ i ], WEB_URL, cce_cnt[ i ], cce_Author[ i ] );
+				format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> WR </font> <font color=#FF0004><b>%s</b></font> <font color=#EEEEE0>by</font> <img src=flags/%s.png align=absmiddle height=32 width=32 /> <b>%s </b><p><font color=#EEEEE0>Record of Website</font> <font color=#4876FF>Cosy-climbing.net</font>",MapName , cce_Time[ i ], cce_cnt[ i ], cce_Author[ i ] );
 				iLen += formatex(e_Message[iLen], 400 - iLen, "^n%s%s %s by %s [%s]",cce_CountryText,Extension, cce_Time[i], cce_Author[i] ,iRank());//cce_cnt[i]
 			}
 		}
@@ -2479,7 +2490,7 @@ public CmdSayWR(id)
 	else 
 	{
 		iLen += formatex( e_Message[iLen], 400 - iLen, "No Map" );
-		format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> This Map not </font>WR. <p><font color=#EEEEE0>Map of Website</font> Unknown.",MapName, WEB_URL );
+		format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> This Map not </font>WR. <p><font color=#EEEEE0>Map of Website</font> Unknown.",MapName);
 		format(WRTimes, 400, "\dWR - Website Unknown or No Map" );
 	}
 	
@@ -5461,7 +5472,7 @@ public FwdHamPlayerSpawn(id)
 		cs_set_user_money(id, 1336)
 		
 		set_task(1.0,"CmdSayWR",id)
-		set_task(8.5,"CmdSayCR",id)
+		// set_task(8.5,"CmdSayCR",id)
 
 		if (DefaultStart) 
 		{
@@ -7687,7 +7698,7 @@ public WrDiffShow(id)
 						}
 					}
 				}
-				set_task(1.5, "CmdSayCR", id)
+				// set_task(1.5, "CmdSayCR", id)
 			}
 			else if (!g_iNtRecordsNum)
 			{
@@ -7708,7 +7719,9 @@ stock ExplodeString( p_szOutput[][], p_nMax, p_nSize, p_szInput[], p_szDelimiter
 }
 
 
-//==========================================================
+//===========================================================
+//						Use SQL
+//===========================================================
 #if defined USE_SQL
 public Set_QueryHandler(iFailState, Handle:hQuery, szError[], iErrnum, cData[], iSize, Float:fQueueTime)
 {
@@ -7827,6 +7840,7 @@ public GetNewRank_QueryHandler(iFailState, Handle:hQuery, szError[], iErrnum, cD
 
 public ProTop_show(id)
 {
+	client_print(0, print_chat, "SQL ProTop_show");
 	kz_showhtml_motd(id, PRO_TOP, MapName)
 		
 	return PLUGIN_HANDLED
@@ -7856,7 +7870,7 @@ public ProRecs_show(id)
 	return PLUGIN_HANDLED
 }
 
-
+// 显示排行榜html type: 显示的排行榜类型 
 stock kz_showhtml_motd(id, type, const map[])
 {
 	new buffer[1001], namebuffer[64], filepath[96]
@@ -7901,6 +7915,11 @@ stock kz_showhtml_motd(id, type, const map[])
 	show_motd(id, buffer, namebuffer)
 }
 #else
+
+//======================================================
+//						NONE SQL						
+//======================================================
+
 public ProTop_update(id, Float:time)
 {
 	new authid[32], name[32], thetime[32],ip[32], country[3], Float: slower, Float: faster, Float:protiempo
@@ -7908,7 +7927,7 @@ public ProTop_update(id, Float:time)
 	get_user_authid(id, authid, 31);
 	get_time("%Y/%m/%d",thetime,31);
 	get_user_ip(id, ip, 31);
-	geoip_code2(ip, country);
+	geoip_code2_ex(ip, country);
 	new bool:Is_in_pro15
 	Is_in_pro15 = false
 
@@ -8086,7 +8105,7 @@ public NoobTop_update(id, Float:time, checkpoints, gochecks)
 	get_user_authid(id, authid, 31);
 	get_time("%Y/%m/%d",thetime,31);
 	get_user_ip(id, ip, 31);
-	geoip_code2(ip, country);
+	geoip_code2_ex(ip, country);
 	new bool:Is_in_noob15 = false
 	
 	if(user_has_scout[id])
@@ -8260,7 +8279,7 @@ public WpnTop_update(id, Float:time, checkpoints, gochecks, maxspeed)
 	get_user_authid(id, authid, 31);
 	get_time("%Y/%m/%d",thetime,31);
 	get_user_ip(id, ip, 31);
-	geoip_code2(ip, country);
+	geoip_code2_ex(ip, country);
 	new bool:Is_in_wpn15
 	Is_in_wpn15 = false
 	if(user_has_scout[id])
@@ -8507,16 +8526,21 @@ public read_Wpn15()
 	fclose(f)
 }
 
+// #MARK: NOSQL ProTop_show	WEB_URL = "addons/amxmodx/configs/kz"
 public ProTop_show(id)
 {		
+	// client_print(0, print_chat, "NoSQL ProTop_show");
 	new fh = fopen( PRO_PATH, "w" )
 	fprintf( fh, "<meta charset=UTF-8>" )
 	fprintf( fh, "<link rel=stylesheet href=%s/topcss/sb.css><table><tr id=a>",WEB_URL )
+	// client_print(0, print_chat, "<link rel=stylesheet href=%s/topcss/sb.css><table><tr id=a>", WEB_URL);
+
 	fprintf( fh, "<th width=1%%> # <th width=15%%> Name <th width=10%%> Time <th width=10%%> To WR <th width=10%%> Date ")
 	
 	new line[501],btime_str[4],ctime_str[65],name[33],imgs[100],Float:difftime,wrdiff[65]//,String:sComm[32];
 	new arrow_up[100],arrow_down[100],arrow_multiway[100]
 	
+	// 每一行 读取top100数据 并动态生成网页内容
 	for (new i = 0; i < 100; i++) 
 	{		
 		name = Pro_Names[i]
@@ -8530,21 +8554,25 @@ public ProTop_show(id)
 		{
 			if (Pro_Times[i] < DiffWRTime[0]) 
 			{	
-				format(arrow_up, 99, "<img src=%s/images/arrow_up.png>" ,WEB_URL)
-				
+				// format(arrow_up, 99, "<img src=%s/images/arrow_up.png>" ,WEB_URL)
+				// 因为href设置后默认就在kz文件夹 故不需要WEB_URL 否则
+				// 否则file:///D:/Games/Steam/steamapps/common/Half-Life/cstrike/addons/amxmodx/configs/kz/addons/amxmodx/configs/kz/flags/CN.png
+				format(arrow_up, 99, "<img src = images/arrow_up.png>")
 				imgs = arrow_up;
 				difftime = DiffWRTime[0]-Pro_Times[i];
 			}
 			else if (Pro_Times[i] > DiffWRTime[0]) 
 			{
-				format(arrow_down, 99, "<img src=%s/images/arrow_down.png>" ,WEB_URL)
+				// format(arrow_down, 99, "<img src=%s/images/arrow_down.png>" ,WEB_URL)
+				format(arrow_down, 99, "<img src = images/arrow_down.png>")
 				
 				imgs = arrow_down;
 				difftime = Pro_Times[i]-DiffWRTime[0];
 			}
 			else if (Pro_Times[i] == DiffWRTime[0]) 
 			{
-				format(arrow_multiway, 99, "<img src=%s/images/arrow_multiway.png>" ,WEB_URL)
+				// format(arrow_multiway, 99, "<img src=%s/images/arrow_multiway.png>" ,WEB_URL)
+				format(arrow_multiway, 99, "<img src = images/arrow_multiway.png>")
 				
 				imgs = arrow_multiway;
 				difftime = 0.00;
@@ -8562,17 +8590,27 @@ public ProTop_show(id)
 			iSeconds = floatround(difftime - (iMinutes * 60), floatround_floor)
 			iMiliSeconds = floatround( ( difftime - ( iMinutes * 60 + iSeconds ) ) * 100, floatround_round )
 
-			format( btime_str, 3, "%d",(i+1))
-			format( ctime_str, 64, "%02i:%02i.<font color=#FF0004>%02i</font>",imin, isec, ims)
-			format( wrdiff, 64, "%02d:%02d.<font color=#FF0004>%02d</font>",iMinutes,iSeconds,iMiliSeconds)
+			format( btime_str, 3, "%d",(i+1))	//序号
+			format( ctime_str, 64, "%02i:%02i.<font color=#FF0004>%02i</font>",imin, isec, ims)	//记录	#FF0004 红色
+			format( wrdiff, 64, "%02d:%02d.<font color=#FF0004>%02d</font>",iMinutes,iSeconds,iMiliSeconds)	//和WR相差
 			
 
 			if (g_iWorldRecordsNum > 0)
 			{
-				formatex( line, 500,"<tr %s><td>%s<td><img src=%s/flags/%s.png align=absmiddle height=32 width=32> <b>%s</b><td>%s<td>%s%s<td>%s",
+				// formatex( line, 500,"<tr %s><td>%s<td><img src=%s/flags/%s.png align=absmiddle height=32 width=32> <b>%s</b><td>%s<td>%s%s<td>%s",
+				// i % 2 ? "bgcolor=#000000" : NULLSTR ,
+				// btime_str,
+				// WEB_URL,
+				// Pro_Country[i],
+				// htmlspecialchars(name),
+				// ctime_str,
+				// wrdiff,
+				// imgs,
+				// Pro_Date[i]
+				// )
+				formatex( line, 500,"<tr %s><td>%s<td><img src = flags/%s.png align=absmiddle height=32 width=32> <b>%s</b><td>%s<td>%s%s<td>%s",
 				i % 2 ? "bgcolor=#000000" : NULLSTR ,
 				btime_str,
-				WEB_URL,
 				Pro_Country[i],
 				htmlspecialchars(name),
 				ctime_str,
@@ -8583,10 +8621,18 @@ public ProTop_show(id)
 			}
 			else
 			{
-				formatex( line, 500,"<tr %s><td>%s<td><img src=%s/flags/%s.png align=absmiddle height=32 width=32> <b>%s</b><td>%s<td>**.**.**<td>%s",
+				// formatex( line, 500,"<tr %s><td>%s<td><img src=%s/flags/%s.png align=absmiddle height=32 width=32> <b>%s</b><td>%s<td>**.**.**<td>%s",
+				// i % 2 ? "bgcolor=#000000" : NULLSTR ,
+				// btime_str,
+				// WEB_URL,
+				// Pro_Country[i],
+				// htmlspecialchars(name),
+				// ctime_str,
+				// Pro_Date[i]
+				// )
+				formatex( line, 500,"<tr %s><td>%s<td><img src = flags/%s.png align=absmiddle height=32 width=32> <b>%s</b><td>%s<td>**.**.**<td>%s",
 				i % 2 ? "bgcolor=#000000" : NULLSTR ,
 				btime_str,
-				WEB_URL,
 				Pro_Country[i],
 				htmlspecialchars(name),
 				ctime_str,
@@ -8596,7 +8642,7 @@ public ProTop_show(id)
 			fprintf( fh, line )		
 		}
 	}
-	
+	 
 	new MotdName[128]
 	formatex(MotdName,127,"Pro Stats of %s", MapName)
 	
@@ -8606,6 +8652,8 @@ public ProTop_show(id)
 	fclose( fh )
 	new PRO_PATHs[1001]
 	formatex(PRO_PATHs, 1000,"<html><head><meta http-equiv=^"Refresh^" content=^"0;url=%s/pro_top.html^"></head><body><p>LOADING...</p></body></html>",WEB_URL)
+	client_print(id, 2, "Before show_motd");
+	client_print(id, 2, "%s", PRO_PATHs);
 	show_motd( id, PRO_PATHs, MotdName )
 
 	return PLUGIN_HANDLED

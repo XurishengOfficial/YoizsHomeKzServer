@@ -4,7 +4,7 @@
 new Array:ArModel, Array:ArSound
 new GTempData[64]
 
-new const UnPrecache_ModelList[ 32 ][ ] = 
+new const UnPrecache_ModelList[ 31 ][ ] = 
 { 
 	"models/w_battery.mdl", 
 	"models/shield/p_shield_deagle.mdl", 
@@ -34,17 +34,16 @@ new const UnPrecache_ModelList[ 32 ][ ] =
 	"sprites/fexplo.spr", 
 	"sprites/fexplo1.spr", 
 	"sprites/b-tele1.spr", 
-	"sprites/c-tele1.spr", 
-	"sprites/ledglow.spr", 
+	"sprites/c-tele1.spr",  
 	"sprites/laserdot.spr", 
 	"sprites/explode1.spr" 
 } 
 
-new const UnPrecache_SoundList[ 116 ][ ] = 
+new const UnPrecache_SoundList[ 115 ][ ] = 
 {
 	"items/suitcharge1.wav", 
 	"items/suitchargeno1.wav", 
-	"items/suitchargeok1.wav", 
+	// "items/suitchargeok1.wav", 
 	"common/wpn_hudoff.wav", 
 	"common/wpn_hudon.wav", 
 	"common/wpn_moveselect.wav", 
