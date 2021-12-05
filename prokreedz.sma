@@ -133,6 +133,9 @@ new const g_szAliveFlags[] = "a"
 #define KZ_LEVEL ADMIN_KICK 
 #define KZ_LEVEL_VIP ADMIN_LEVEL_C
 
+#define ECHOCMD
+#define UPDATEINTERVAL_SPECLIST 0.5
+
 // UpdateGameName
 new szGameName[33]
 //.
@@ -157,8 +160,12 @@ new cvar_respawndelay
 //#define TASK_GOPOS	767767
 
 
-// speclist hide+++
+// speclist
 new bool:g_bHideMe[33];
+new gMaxPlayers;
+new gCvarOn;
+new gCvarImmunity;
+new bool:gOnOff[33] = { true, ... };
 //
 
 
@@ -307,6 +314,9 @@ new Float:Pro_Times[104]
 new Pro_AuthIDS[104][32]
 new Pro_Names[104][32]
 new Pro_Date[104][32]
+new Trie:STEAMID_PRO_TIMES;
+new Trie:STEAMID_PRO_RANK;
+
 new Float:Noob_Tiempos[104]
 new Noob_AuthIDS[104][32]
 new Noob_Names[104][32]
@@ -314,6 +324,10 @@ new Noob_Date[104][32]
 new Noob_CheckPoints[104]
 new Noob_GoChecks[104]
 new Noob_Weapon[104][32]
+new Trie:STEAMID_NUB_TIMES;
+new Trie:STEAMID_NUB_RANK;
+
+
 new Pro_Country[104][8]//TOP显示国旗
 new Noob_Country[104][8]//TOP显示国旗
 new Wpn_Country[104][8]//TOP显示国旗
@@ -576,6 +590,7 @@ new g_szMapName[32];
 public plugin_init()
 {
 	register_plugin("ProKreedz", VERSION, "P & nucLeaR & p4ddY")
+
 	g_maxplayers = get_maxplayers()
 	mp_timelimit = get_cvar_pointer("mp_timelimit")
 	register_menucmd(register_menuid("ServerMenu", 0), 1023, "handleServerMenu");
@@ -729,7 +744,7 @@ public plugin_init()
 	kz_register_saycmd("prorecs", "ProRecs_show", 0)
 	#endif
 	
-	set_task(0.5, "show_Top1msg",0,"",0,"b") 
+	set_task(0.5, "show_Top1msg",0,"",0,"b") 	// 负责在玩家进服前就初始化好protop1 nubtop1 wpntop1相关信息供 cmdSayWR显示
 	
 	g_msgHideWeapon = get_user_msgid("HideWeapon")
 	register_event("ResetHUD", "onResetHUD", "b")
@@ -941,6 +956,21 @@ public plugin_init()
 	}
 	//-------------结束------------
 
+	// ========================= speclist观战参数初始化 =========================
+	gCvarOn = register_cvar("amx_speclist", "1", 0, 0.0);
+	gCvarImmunity = register_cvar("amx_speclist_immunity", "0", 0, 0.0);
+	
+	register_clcmd("say /speclist", "cmdSpecList", -1, "");
+	
+	gMaxPlayers = get_maxplayers();
+	STEAMID_PRO_RANK = TrieCreate();
+	STEAMID_PRO_TIMES = TrieCreate();
+	STEAMID_NUB_RANK = TrieCreate();
+	STEAMID_NUB_TIMES = TrieCreate();
+
+	set_task(UPDATEINTERVAL_SPECLIST, "tskShowSpec", 123094, "", 0, "b", 0);
+
+	// =========================================================================
 	HudApplyCVars();
 }
 
@@ -1027,10 +1057,39 @@ public plugin_precache()
 public test3(id) {
 	// server_print("g_CheckPointArray size is %d", ArraySize(g_CheckPointArray[id]));
 	// mapcycle.txt
-	new country[3];
-	new tmpIp[] = "223.72.93.125";
-	geoip_code2_ex(tmpIp, country);
-	client_print(0, print_chat, country);
+	// read_pro15();
+	for(new i = 1; i <= gMaxPlayers; ++i) {
+		if(!is_user_connected(i) || is_user_bot(i)) continue;
+		new authId[64];
+		new name[64];
+		new Pro_Time[64];
+		new Pro_Rank;
+		new Nub_Time[64];
+		new Nub_Rank;
+		get_user_name(i, name, charsmax(name));
+		get_user_authid(i, authId, charsmax(authId));
+
+		// Pro Trier
+		new isExist = TrieKeyExists(STEAMID_PRO_TIMES, authId);
+		if(isExist) {
+			TrieGetString(STEAMID_PRO_TIMES, authId, Pro_Time, charsmax(Pro_Time));
+			TrieGetCell(STEAMID_PRO_RANK, authId, Pro_Rank);
+			server_print("[PRO]%s		%s		%s	#%d", name, authId, Pro_Time, Pro_Rank);
+		}
+		else 
+			server_print("[PRO]%s		%s		No record", name, authId );
+
+		// Nub Trier
+		isExist = TrieKeyExists(STEAMID_NUB_TIMES, authId);
+		if(isExist) {
+			TrieGetString(STEAMID_NUB_TIMES, authId, Nub_Time, charsmax(Nub_Time));
+			TrieGetCell(STEAMID_NUB_RANK, authId, Nub_Rank);
+			server_print("[NUB]%s		%s		%s	#%d", name, authId, Nub_Time, Nub_Rank);
+		}
+		else 
+			server_print("[NUB]%s		%s		No record", name, authId);
+
+	}
 }
 public plugin_cfg()
 {
@@ -2306,7 +2365,7 @@ public iRankcr()
 	return rank
 }
 
-//# /wr
+//# /wr 进服0.5s自动显示
 public show_Top1msg(id)
 {
 	new Pro1name[32],Nub1name[32],Wpn1name[32],authid[32]
@@ -4931,6 +4990,10 @@ public Ham_CBasePlayer_PreThink_Post(id)
 public plugin_end()
 {
 	TrieDestroy(g_tSounds);
+	TrieDestroy(STEAMID_PRO_TIMES);
+	TrieDestroy(STEAMID_PRO_RANK);
+	TrieDestroy(STEAMID_NUB_TIMES);
+	TrieDestroy(STEAMID_NUB_RANK);
 }
 
 public client_PostThink(id) 
@@ -5904,6 +5967,9 @@ public client_disconnect(id)
 		ArrayClear(gc_DemoReplay[id]);
 	}
 	p_lang[id] = true;
+
+	gOnOff[id] = true;
+
 	return 0;
 }
  
@@ -5951,7 +6017,8 @@ public client_putinserver(id)
 	#endif
 	
 	g_bHideMe[id] = false;
-	// ===================#MARK==================
+	gOnOff[id] = true;
+
 	REC_AC[id] = false;
 	p_lang[id] = true;
 	if (is_user_bot(id))
@@ -5962,7 +6029,7 @@ public client_putinserver(id)
 	{
 		g_bitBots = (~1 << id & 31 & g_bitBots);
 	}
-	set_task(0.5, "plspawn", id)
+	set_task(1.0, "plspawn", id)
 	set_task(0.1, "UpdateStats", id)
 
 	client_cmd(id, "fps_max 99.5");	//进服设置fps上限.
@@ -7974,7 +8041,8 @@ public ProTop_update(id, Float:time)
 			formatex(Pro_Date[i], 31, thetime)
 			Pro_Times[i] = time
 			
-			save_pro15()
+			save_pro15();
+			read_pro15();
 			
 			if( Is_in_pro15 )	//完成时 原本就在pro15中
 			{
@@ -8053,6 +8121,7 @@ public ProTop_update(id, Float:time)
 		}
 		
 	}
+	// 更新pro_top后重新读取相关信息
 }
 
 public save_pro15()
@@ -8091,6 +8160,23 @@ public read_pro15()
 		new totime[25]
 		parse(prodata, totime, 24, Pro_Country[i], 3, Pro_AuthIDS[i], 31, Pro_Names[i], 31, Pro_Date[i], 31)
 		Pro_Times[i] = str_to_float(totime)
+		
+		// 如果读取到的是有效的记录(即STEAMID有效 or 时间 < 999999999)
+		if(equal(Pro_AuthIDS[i], "STEAM", 5)) {
+			new imin = floatround(Pro_Times[i] / 60.0, floatround_floor)
+			new isec = floatround(Pro_Times[i] - imin * 60.0,floatround_floor)
+			new ims = floatround( ( Pro_Times[i] - ( imin * 60.0 + isec ) ) * 100.0, floatround_round )
+			new Pro_Time_Format_Str[64];
+			formatex(Pro_Time_Format_Str, charsmax(Pro_Time_Format_Str), "%02i:%02i.%02i", imin, isec, ims);
+			TrieSetCell(STEAMID_PRO_RANK, Pro_AuthIDS[i], i + 1);
+			TrieSetString(STEAMID_PRO_TIMES, Pro_AuthIDS[i], Pro_Time_Format_Str);
+
+			new idx = -1;
+			new str[64];
+			TrieGetCell(STEAMID_PRO_RANK, Pro_AuthIDS[i], idx);
+			TrieGetString(STEAMID_PRO_TIMES, Pro_AuthIDS[i], str, charsmax(str));
+			// server_print("%s	%s	%d", Pro_AuthIDS[i], str, idx);
+		}
 		i++;
 	}
 	fclose(f)
@@ -8162,8 +8248,8 @@ public NoobTop_update(id, Float:time, checkpoints, gochecks)
 			Noob_CheckPoints[i] = checkpoints
 			Noob_GoChecks[i] = gochecks
 			
-			save_Noob15()
-			
+			save_Noob15();	// 更新后应该立刻读取刷新数据	
+			read_Noob15();		
 			if( Is_in_noob15 )
 			{
 
@@ -8267,6 +8353,17 @@ public read_Noob15()
 		Noob_Tiempos[i] = str_to_float(totime)
 		Noob_CheckPoints[i] = str_to_num(checks)
 		Noob_GoChecks[i] = str_to_num(gochecks)
+
+		if(equal(Noob_AuthIDS[i], "STEAM", 5)) {
+			new imin = floatround(Noob_Tiempos[i] / 60.0, floatround_floor)
+			new isec = floatround(Noob_Tiempos[i] - imin * 60.0,floatround_floor)
+			new ims = floatround( ( Noob_Tiempos[i] - ( imin * 60.0 + isec ) ) * 100.0, floatround_round )
+			new Noob_Time_Format_Str[64];
+			formatex(Noob_Time_Format_Str, charsmax(Noob_Time_Format_Str), "%02i:%02i.%02i", imin, isec, ims);
+
+			TrieSetCell(STEAMID_NUB_RANK, Noob_AuthIDS[i], i + 1);
+			TrieSetString(STEAMID_NUB_TIMES, Noob_AuthIDS[i], Noob_Time_Format_Str);
+		}
 		i++;
 	}
 	fclose(f)
@@ -8793,6 +8890,168 @@ stock is_user_localhost(id)
 	return false;
 }
 
+//======================= #MARK: SPECLIST================================
+public cmdSpecList(id)
+{
+	if( gOnOff[id] )
+	{
+		client_print(id, print_chat, "[AMXX] You will no longer see who's spectating you.");
+		gOnOff[id] = false;
+	}
+	else
+	{
+		client_print(id, print_chat, "[AMXX] You will now see who's spectating you.");
+		gOnOff[id] = true;
+	}
+	
+	#if defined ECHOCMD
+	return PLUGIN_CONTINUE;
+	#else
+	return PLUGIN_HANDLED;
+	#endif
+}
+
+public tskShowSpec()
+{
+	#define RED 64
+	#define GREEN 64
+	#define BLUE 64
+	// client_print(0, print_chat, "1tskShowSpec......");
+	if( !get_pcvar_num(gCvarOn) )
+	{
+		return PLUGIN_CONTINUE;
+	}
+	
+	static szHud_toAlive[1312];//32*33+256
+	static szHud_toDead[1312];//32*33+45
+
+	static szName[34];
+	static szAuthId[34];
+	static bool:send;
+	
+	// FRUITLOOOOOOOOOOOOPS!
+	// 每次循环 把alive信息发送给spec其(alive)的dead
+	for( new alive = 1; alive <= gMaxPlayers; alive++ )
+	{
+		new bool:sendTo[33];
+		send = false;
+		
+		if( !is_user_alive(alive) )
+		{
+			continue;
+		}
+		
+		sendTo[alive] = true;
+		
+		get_user_name(alive, szName, 32);
+		get_user_authid(alive, szAuthId, 32);
+		format(szHud_toAlive, 90, "Spectating %s:^n", szName);	// Spectating Azuki:
+
+		/* 如果观战BOT 则
+			[PRO]Azuki daisuki~00:29.45
+			From: IANA保留地址CZ88.NET
+			Authid:STEAM_ID_LAN
+			Date: 2021/11707 - 00:03:00
+
+			Spectating:
+			Azuki daisuki~
+		*/
+		if(is_user_bot(alive)) {
+			if(equal(szName, "[P", 2)) {
+				format(szHud_toDead, 256, "%s^nFrom: %s^nAuthid: %s^nDate: %s^n^nSpectating:^n", szName, g_country, g_authid, g_date);	// Azuki From:CN Authid: STEAM_0:0... Date: 2021/12/5
+			}
+			if(equal(szName, "[N", 2)) {
+				format(szHud_toDead, 256, "%s^nFrom: %s^nAuthid: %s^nDate: %s^n^nSpectating:^n", szName, gc_country, gc_authid, gc_date);	// Azuki From:CN Authid: STEAM_0:0... Date: 2021/12/5
+			}
+		}
+		/* 如果观战玩家 则
+			Azuki daisuki~
+			From: IANA保留地址CZ88.NET
+			Authid:STEAM_ID_LAN
+			Pro: 00:29.45 [#1]
+			Nub: 00:23.45 [#2]
+
+			Spectating:
+			Azuki daisuki~
+		*/
+		else {
+			new alive_ip[64];
+			new alive_country[32];	//后续修改
+			new pro_time[32];
+			new pro_rank = 0;
+			new nub_time[32];
+			new nub_rank = 0;
+
+			get_user_ip(alive, alive_ip, charsmax(alive_ip));
+			geoip_country(alive_ip, alive_country, charsmax(alive_country));
+
+			//查找pro
+			if(TrieKeyExists(STEAMID_PRO_TIMES, szAuthId)) TrieGetString(STEAMID_PRO_TIMES, szAuthId, pro_time, charsmax(pro_time));
+			else formatex(pro_time, charsmax(pro_time), "No record");
+			if(TrieKeyExists(STEAMID_PRO_RANK, szAuthId)) TrieGetCell(STEAMID_PRO_RANK, szAuthId, pro_rank);
+
+			//查找nub
+			if(TrieKeyExists(STEAMID_NUB_TIMES, szAuthId)) TrieGetString(STEAMID_NUB_TIMES, szAuthId, nub_time, charsmax(nub_time));
+			else formatex(nub_time, charsmax(nub_time), "No record");
+			if(TrieKeyExists(STEAMID_NUB_RANK, szAuthId)) TrieGetCell(STEAMID_NUB_RANK, szAuthId, nub_rank);
+
+			format(szHud_toDead, 256, "%s^nFrom: %s^nAuthid: %s^nPro : %s [#%d]^nNub: %s [#%d]^n^nSpectating:^n", 
+				szName, 
+				alive_country, 
+				szAuthId, 
+				pro_time,
+				pro_rank,
+				nub_time,
+				nub_rank
+			);	// Azuki From:CN Authid: STEAM_0:0... Date: 2021/12/5
+		}
+		for( new dead = 1; dead <= gMaxPlayers; dead++ )
+		{
+			if( is_user_connected(dead) )
+			{
+				if( is_user_alive(dead) || is_user_bot(dead) )
+				{
+					continue;
+				}
+				
+				if( pev(dead, pev_iuser2) == alive )	//获取dead的人观察的人是不是alive
+				{
+					// if( !(get_pcvar_num(gCvarImmunity)&&get_user_flags(dead, 0)&FLAG) )
+					if( !(get_pcvar_num(gCvarImmunity)) )
+					{
+						get_user_name(dead, szName, 32);
+						add(szName, 33, "^n", 0);
+						add(szHud_toAlive, 1312, szName, 0);
+						add(szHud_toDead, 1312, szName, 0);
+						send = true;
+					}
+					sendTo[dead] = true;
+				}
+			}
+		}
+		
+		if( send == true )
+		{
+			for( new i = 1; i <= gMaxPlayers; i++ )
+			{
+				if( sendTo[i] == true
+				&& gOnOff[i] == true )
+				{
+					set_hudmessage(RED, GREEN, BLUE, 0.75, 0.15, 0, 6.0, UPDATEINTERVAL_SPECLIST + 0.5, 0.0, 0.0, 1);	// channel1
+					if(is_user_alive(i))	// 给被观战的人发送szHud_toAlive
+						show_hudmessage(i, szHud_toAlive);
+					if(!is_user_alive(i))	// 给观战的人发送szHud_toDead
+						show_hudmessage(i, szHud_toDead);
+					// client_print(0, print_chat, "show_hudmessage......");
+					// client_print(0, print_chat, "szHud_toAlive: %s", szHud_toAlive);
+				}
+			}
+		}
+	}
+	// client_print(0, print_chat, "Before return......");
+	return PLUGIN_CONTINUE;
+}
+//======================= SPECLIST END================================
 // Plugin Start 2.31Ver by nucLeaR
 // Last edit by Perfectslife 
 // 2021/11/16 edit by Azuki daisuki~
