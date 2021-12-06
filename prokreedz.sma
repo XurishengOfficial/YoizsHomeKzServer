@@ -94,6 +94,7 @@ mpbhop.amxx
 #include <string2>//ID字符转换
 #include <colorchat1>
 #include <geoip>
+#include <ipseeker>
 // #include <kz>
 
 // #define KZ_AUTO_DOWNLOAD_WRTXT
@@ -1269,7 +1270,8 @@ public ClCmd_UpdateReplay(id, Float:timer)
 	get_user_authid(id, authid, 31);
 	get_time("%Y/%m/%d - %H:%M:%S", thetime, charsmax(thetime));
 	get_user_ip(id, ip, 31, 1);
-	geoip_country(ip, country, charsmax(country));
+	// geoip_country(ip, country, charsmax(country));
+	ipseeker(ip, _, country, charsmax(country), 1);
 	g_ReplayBestRunTime = timer;
 
 	new szFile[128];
@@ -1337,7 +1339,8 @@ public ClCmd_UpdateReplay_c(id, Float:timer)
 	get_user_authid(id, authid, 31);
 	get_time("%Y/%m/%d - %H:%M:%S", thetime, charsmax(thetime));
 	get_user_ip(id, ip, 31, 1);
-	geoip_country(ip, country, charsmax(country));
+	// geoip_country(ip, country, charsmax(country));
+	ipseeker(ip, _, country, charsmax(country), 1);
 	gc_ReplayBestRunTime = timer;
 
 	new szFile[128];
@@ -4878,11 +4881,13 @@ public cmdWaterInvisible(id)
 // host 接收包的玩家[使用屏蔽功能的玩家]
 // ent 服务器发送的实体
 // https://www.cnblogs.com/crsky/p/6881052.html
+// https://tieba.baidu.com/p/4251190355
+// bool player 该实体是不是玩家
 public FM_client_AddToFullPack_Post(es, e, ent, host, hostflags, player, pSet) 
 { 
-	if( player )
+	if( player )	
 	{
-		if (get_pcvar_num(kz_semiclip) == 1)
+		if (get_pcvar_num(kz_semiclip) == 1)	// 玩家半透明
 		{
 			if ( host != ent && get_orig_retval() && is_user_alive(host) ) 
     		{ 
@@ -4893,16 +4898,16 @@ public FM_client_AddToFullPack_Post(es, e, ent, host, hostflags, player, pSet)
 				// set_es(es, ES_RenderAmt, get_pcvar_num(kz_semiclip_transparency));
 			} 
 		}
-		if(gMarkedInvisible[ent] && gViewInvisible[host])
+		if(gMarkedInvisible[ent] && gViewInvisible[host])	// 屏蔽玩家
 		{
  		  	set_es(es, ES_RenderMode, kRenderTransTexture)
 			set_es(es, ES_RenderAmt, 0)
 			set_es(es, ES_Origin, { 999999999.0, 999999999.0, 999999999.0 } )
 		}
 	}
-	else if( gWaterInvisible[host] && gWaterEntity[ent] && !is_user_bot(host) )
+	else if( gWaterInvisible[host] && gWaterEntity[ent] && !is_user_bot(host) )	// 屏蔽水纹理
 	{
-		set_es(es, ES_Effects, get_es( es, ES_Effects ) | EF_NODRAW )
+		set_es(es, ES_Effects, get_es( es, ES_Effects ) | EF_NODRAW )	// EF_NODRAW Do not draw entity
 	}
 	
 	return FMRES_IGNORED
@@ -8748,10 +8753,16 @@ public ProTop_show(id)
 	fprintf( fh, "<div align=center><f>%s</div>",WRTime)
 	fclose( fh )
 	new PRO_PATHs[1001]
-	formatex(PRO_PATHs, 1000,"<html><head><meta http-equiv=^"Refresh^" content=^"0;url=%s/pro_top.html^"></head><body><p>LOADING...</p></body></html>",WEB_URL)
+	// formatex(PRO_PATHs, 1000,"<html><head><meta http-equiv=^"Refresh^" content=^"0;url=%s/pro_top.html^"></head><body><p>LOADING...</p></body></html>",WEB_URL);
+	formatex(PRO_PATHs, 1000,"addons/amxmodx/configs/kz/pro_top.html");
+	// formatex(PRO_PATHs, 1000,"<html><head><meta http-equiv=^"Refresh^" content=^"0;url=addons/amxmodx/configs/kz/pro_top.html^"></head><body><p>LOADING...</p></body></html>");
+
 	client_print(id, 2, "Before show_motd");
 	client_print(id, 2, "%s", PRO_PATHs);
-	show_motd( id, PRO_PATHs, MotdName )
+	// 显示内容时 url中内容是客户本地的html文件
+	// 显示文件时 url中显示的是服务器本地的html文件
+	// #MARK: 后续修改: 将所有格式都引用自服务器本地文件 避免远程ip; 每次使用pro_top命令时自动生成相应的网页
+	show_motd( id, PRO_PATHs, MotdName );
 
 	return PLUGIN_HANDLED
 }
@@ -8976,15 +8987,15 @@ public tskShowSpec()
 		*/
 		else {
 			new alive_ip[64];
-			new alive_country[32];	//后续修改
+			new alive_country[64];	//后续修改
 			new pro_time[32];
 			new pro_rank = 0;
 			new nub_time[32];
 			new nub_rank = 0;
 
 			get_user_ip(alive, alive_ip, charsmax(alive_ip));
-			geoip_country(alive_ip, alive_country, charsmax(alive_country));
-
+			// geoip_country(alive_ip, alive_country, charsmax(alive_country));
+			ipseeker(alive_ip, _, alive_country, charsmax(alive_country), 1);
 			//查找pro
 			if(TrieKeyExists(STEAMID_PRO_TIMES, szAuthId)) TrieGetString(STEAMID_PRO_TIMES, szAuthId, pro_time, charsmax(pro_time));
 			else formatex(pro_time, charsmax(pro_time), "No record");
