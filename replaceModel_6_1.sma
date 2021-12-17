@@ -239,18 +239,25 @@ public changeModel(args[]) {
     get_user_name(id, name, charsmax(name));
     client_cmd(id, "cl_minmodels 0");
     server_print("#%d %s %s", id, steamId, name);
-    if(is_user_bot(id)) {
-        //NUB BOT
-        if(equal(name, "[N", 2))
-            cs_set_user_model(id, "coconut");
-        else
-        //WR & PRO
-            cs_set_user_model(id, "azuki");
-        return;
-    }
+    // if(is_user_bot(id)) {
+    //     //NUB BOT
+    //     if(equal(name, "[N", 2) && TrieKeyExists(steamId_player, "NUB")) {
+    //         TrieGetString(steamId_player, "NUB", modelName, 64);
+    //         server_print("========== NUB ========== %s", modelName);
+    //         // cs_set_user_model(id, "coconut");
+    //     }
+    //     //WR & PRO
+    //     else if(equal(name, "[P", 2) && TrieKeyExists(steamId_player, "PRO")) {
+    //         TrieGetString(steamId_player, "PRO", modelName, 64);
+    //         server_print("========== PRO ========== %s", modelName);
+    //         // cs_set_user_model(id, "azuki");
+    //     }
+    //     return;
+    // }
     if(TrieKeyExists(steamId_player, steamId)) {
         TrieGetString(steamId_player, steamId, modelName, 64);
         // set_user_info(id, "model", modelName); //单独使用该命令无效
+        server_print("%s    %s", steamId, modelName);
         cs_set_user_model(id, modelName);
         // server_print("#%d 玩家的模型已被设置为: %s", id, modelName);
         // g_has_set_model[id] = true;

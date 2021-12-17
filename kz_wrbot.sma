@@ -261,8 +261,9 @@ public plugin_precache()
 	new szIP[16];
 	get_user_ip( !is_dedicated_server(), szIP, charsmax(szIP));
 	
-	if(containi(szIP,"loopback") > -1 || containi(szIP,"127.0.0.1") > -1 || strlen(szIP) == 0)
-		set_pcvar_num(country_flag,0);
+	// 本地服务器屏蔽flag
+	// if(containi(szIP,"loopback") > -1 || containi(szIP,"127.0.0.1") > -1 || strlen(szIP) == 0)
+	// 	set_pcvar_num(country_flag,0);
 	
 
 	if(get_pcvar_num(country_flag))
@@ -858,7 +859,7 @@ destroy_bot_icon()
 
 public addToFullPack(es, e, ent, host, hostflags, player, pSet)
 {
-	if(wr_bot_id == host)
+	if(wr_bot_id == host)	// 机器人本身不做任何操作
 	{
 		return FMRES_IGNORED;
 	}
@@ -866,15 +867,15 @@ public addToFullPack(es, e, ent, host, hostflags, player, pSet)
 	{
 		if(pev_valid(ent) && (pev(ent, pev_iuser1) == pev(ent, pev_owner)))
 		{
-			new user = pev(ent, pev_iuser2);
+			new user = pev(ent, pev_iuser2);	// 通过绑定到bot上的spr获取到bot的id?
 			new specmode = pev(host, pev_iuser1);
 
 			if(is_user_alive(user))
 			{
 				new Float: playerOrigin[3];
-				pev(user, pev_origin, playerOrigin);
+				pev(user, pev_origin, playerOrigin);	
 				playerOrigin[2] += 42;
-				engfunc(EngFunc_SetOrigin, ent, playerOrigin);
+				engfunc(EngFunc_SetOrigin, ent, playerOrigin); //设置spr在头顶
 
 				if(specmode == 4)
 				{
