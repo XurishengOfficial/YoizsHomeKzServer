@@ -73,9 +73,35 @@ mpbhop.amxx
 必须开启orpheu amxx 模块 插件才能正常运行 axn环境支持.
 
 //======================= #更新日志#================================
-*2021/11/16
+*
+2021/11/16
 	1.新增PRO和NUB BOT功能
-	2.修改夜视仪 提高帧数
+	2.修改夜视仪逻辑 提高帧数
+
+2021/11/17
+	1.修复 Nub BOT不完整BUG Pro 和 NUB数据都存在一个数组
+
+2021/11/18
+	1.优化读取上一个点功能 最多返回点个数kz_checkpoints_num控制
+
+2021/11/21
+	1.新增Undo GoCheck功能
+	2.新增是否读取存点角度功能 可自行设置默认方式
+
+2021/12/5
+	1.完善服务器NoSQL 的pro_top nub_top html显示
+	2.观战新增被观战玩家详细信息(归属地、成绩、排名...)
+
+2021/12/7
+	1.获取玩家归属地换用ipseeker API
+
+2021/12/30
+	1.修复玩家进服后最佳成绩计分板显示问题(BUG: 显示pro和nub cfg中对应行最佳成绩而不是对应玩家最好成绩)
+
+
+//======================= #ToDo List#================================
+	1.完善pro_top
+	2.增加BOT控制
 */
 
 
@@ -133,12 +159,13 @@ new const g_szAliveFlags[] = "a"
 #define KZ_ADMIN ADMIN_IMMUNITY
 #define KZ_LEVEL ADMIN_KICK 
 #define KZ_LEVEL_VIP ADMIN_LEVEL_C
+#define KZ_LEVEL_RTV ADMIN_LEVEL_D
 
 #define ECHOCMD
 #define UPDATEINTERVAL_SPECLIST 0.5
 
 // UpdateGameName
-new szGameName[33]
+new szGameName[16]
 //.
 
 //Top 100
@@ -315,8 +342,8 @@ new Float:Pro_Times[104]
 new Pro_AuthIDS[104][32]
 new Pro_Names[104][32]
 new Pro_Date[104][32]
-new Trie:STEAMID_PRO_TIMES;
-new Trie:STEAMID_PRO_RANK;
+new Trie:STEAMID_PRO_TIMES;	// STEAMID --> PRO_TIMES	
+new Trie:STEAMID_PRO_RANK; 	// STEAMID --> PRO_RANK
 
 new Float:Noob_Tiempos[104]
 new Noob_AuthIDS[104][32]
@@ -413,6 +440,7 @@ new gochecknumbers[33]
 new chatorhud[33]
 new ShowTime[33]
 new MapName[64]
+new MapInfo[16];
 new Kzdir[128]
 new SavePosDir[128]
 new prefix[33]
@@ -1954,48 +1982,51 @@ public BotThink_c(id)
 
 public fnUpdateGameName()
 { 
-	static id,num;id++;num=0;
-	switch(id)
-	{
-		/*case 1:
-		{
-			for(new i=1; i  <= max_players; i++)
-			{	
-				if(is_user_connected(i))
-				{
-					if(is_user_steam(i))
-					{	
-						num++;
-					}
-				}
-			}
-			format(szGameName,charsmax(szGameName),"Steam players (%i / %i)",num,max_players);
-		}*/
-		case 2:
-		{
-			for(new i=1; i  <= max_players; i++)
-			{
-				if(is_user_connected(i))
-				{
-					if(is_user_admin(i))
-					{
-						num++;
-					}
-				}
-			}
-			format(szGameName,charsmax(szGameName),"Admins Online(%i / %i)",num,max_players);
-		}
-		case 3:
-		{
-			format(szGameName,charsmax(szGameName),"Counter-Strike");
-		}
-		case 4:
-		{
-			format(szGameName,charsmax(szGameName),"#KZ Server");
-			id=1;
+	// static id,num;id++;num=0;
+	// switch(id)
+	// {
+	// 	/*case 1:
+	// 	{
+	// 		for(new i=1; i  <= max_players; i++)
+	// 		{	
+	// 			if(is_user_connected(i))
+	// 			{
+	// 				if(is_user_steam(i))
+	// 				{	
+	// 					num++;
+	// 				}
+	// 			}
+	// 		}
+	// 		format(szGameName,charsmax(szGameName),"Steam players (%i / %i)",num,max_players);
+	// 	}*/
+	// 	case 2:
+	// 	{
+	// 		for(new i=1; i  <= max_players; i++)
+	// 		{
+	// 			if(is_user_connected(i))
+	// 			{
+	// 				if(is_user_admin(i))
+	// 				{
+	// 					num++;
+	// 				}
+	// 			}
+	// 		}
+	// 		format(szGameName,charsmax(szGameName),"Admins Online(%i / %i)",num,max_players);
+	// 	}
+	// 	case 3:
+	// 	{
+	// 		format(szGameName,charsmax(szGameName),"Counter-Strike");
+	// 	}
+	// 	case 4:
+	// 	{
+	// 		format(szGameName,charsmax(szGameName),"#KZ Server");
+	// 		id=1;
 
-		}
-	}
+	// 	}
+	// }
+	formatex(szGameName, charsmax(szGameName),"%s", MapInfo);
+	// server_print("current szGameName is == %s ==", szGameName);
+	// server_print("current MapInfo is == %s ==", MapInfo);
 	set_task(6.0,"fnUpdateGameName");
 }
 
@@ -2015,7 +2046,7 @@ stock bool:is_user_steam(id) //Sho0ter
 
 public fnGetGameDescription()
 {
-	forward_return(FMV_STRING,szGameName);
+	forward_return(FMV_STRING, szGameName);
 	return FMRES_SUPERCEDE;
 }
 
@@ -2175,8 +2206,9 @@ stock force_team_join(id, menu_msgid)
 
 public ExtendTime(id)//延长时间
 {
-	if (! (get_user_flags( id ) & KZ_LEVEL ))
+	if (! (get_user_flags( id ) & KZ_LEVEL_VIP ))
 	{
+		server_print("NOT VIP");
 		return PLUGIN_HANDLED
 	}
 	new arg[32];
@@ -2552,12 +2584,31 @@ public CmdSayWR(id)
 	else 
 	{
 		iLen += formatex( e_Message[iLen], 400 - iLen, "No Map" );
+		// 设置Pro or Nub html
 		format(WRTime, 400, "<font color=#EEEEE0>Map </font><b>%s</b><p> <font color=#EEEEE0> This Map not </font>WR. <p><font color=#EEEEE0>Map of Website</font> Unknown.",MapName);
 		format(WRTimes, 400, "\dWR - Website Unknown or No Map" );
 	}
 	
+	iLen += formatex( e_Message[iLen], 400 - iLen, "^n^n[Me]" );
+	new pro_time[32];
+	new pro_rank = 0;
+	new nub_time[32];
+	new nub_rank = 0;
+	new szAuthId[34];
+	get_user_authid(id, szAuthId, 32);
+	//查找pro
+	if(TrieKeyExists(STEAMID_PRO_TIMES, szAuthId)) TrieGetString(STEAMID_PRO_TIMES, szAuthId, pro_time, charsmax(pro_time));
+	else formatex(pro_time, charsmax(pro_time), "No record");
+	if(TrieKeyExists(STEAMID_PRO_RANK, szAuthId)) TrieGetCell(STEAMID_PRO_RANK, szAuthId, pro_rank);
+
+	//查找nub
+	if(TrieKeyExists(STEAMID_NUB_TIMES, szAuthId)) TrieGetString(STEAMID_NUB_TIMES, szAuthId, nub_time, charsmax(nub_time));
+	else formatex(nub_time, charsmax(nub_time), "No record");
+	if(TrieKeyExists(STEAMID_NUB_RANK, szAuthId)) TrieGetCell(STEAMID_NUB_RANK, szAuthId, nub_rank);
+
+	iLen += formatex( e_Message[iLen], 400 - iLen, "^nPro : %s [#%d]^nNub: %s [#%d]", pro_time, pro_rank, nub_time, nub_rank);
 	set_hudmessage(12, 122, 221, 0.01, 0.13, _, _,6.0, 0.5, 2.0, -1);	
-	show_hudmessage(id,e_Message);
+	show_hudmessage(id, e_Message);
 	
 	return PLUGIN_HANDLED
 	
@@ -4942,13 +4993,13 @@ public Ham_CBasePlayer_PreThink_Post(id)
 			{
 				show_hudmessage(id, "BOT: %s", name)
 			}
-			else if (uflags & KZ_LEVEL_VIP)
-			{
-				show_hudmessage( id, "VIP: %s^n[%02i:%02i:%0i | %d/%d%s]", name, imin, isec,ims, checknumbers[Target], gochecknumbers[Target], IsPaused[Target] ? "| *Paused*" : "")
-			}
 			else if (uflags & KZ_ADMIN)
 			{
-				show_hudmessage( id, "ADMIN: %s^n[%02i:%02i:%02i | %d/%d%s]", name, imin, isec,ims, checknumbers[Target], gochecknumbers[Target], IsPaused[Target] ? "| *Paused*" : "")
+				show_hudmessage( id, "ADMIN: %s^n[%02i:%02i:%0i | %d/%d%s]", name, imin, isec,ims, checknumbers[Target], gochecknumbers[Target], IsPaused[Target] ? "| *Paused*" : "")
+			}
+			else if (uflags & KZ_LEVEL_VIP)
+			{
+				show_hudmessage( id, "VIP: %s^n[%02i:%02i:%02i | %d/%d%s]", name, imin, isec,ims, checknumbers[Target], gochecknumbers[Target], IsPaused[Target] ? "| *Paused*" : "")
 			}
 			else 
 			{
@@ -4961,13 +5012,13 @@ public Ham_CBasePlayer_PreThink_Post(id)
 			{
 				show_hudmessage(id, "BOT: %s", name)
 			}
-			else if (uflags & KZ_LEVEL_VIP)
-			{
-				show_hudmessage( id, "VIP: %s^n[OFF | %d/%d]", name, checknumbers[Target], gochecknumbers[Target])
-			}
 			else if (uflags & KZ_ADMIN)
 			{
 				show_hudmessage( id, "ADMIN: %s^n[OFF | %d/%d]", name, checknumbers[Target], gochecknumbers[Target])
+			}
+			else if (uflags & KZ_LEVEL_VIP)
+			{
+				show_hudmessage( id, "VIP: %s^n[OFF | %d/%d]", name, checknumbers[Target], gochecknumbers[Target])
 			}
 			else
 			{
@@ -5475,7 +5526,7 @@ public FwdHamPlayerSpawn(id)
 	else 
 		Autosavepos[id]=true
 	
-	if (!is_user_alive(id))
+	if (!is_user_connected(id) || !is_user_alive(id))
 		return;
 	
 	// if(firstspawn[id] && !is_user_bot(id) && is_user_alive(id) && is_user_connected(id))
@@ -5502,18 +5553,26 @@ public FwdHamPlayerSpawn(id)
 			new authid[32]
 			get_user_authid(id, authid, 31)
 			
-			if(equal(Pro_AuthIDS[i], authid) || equal(Noob_AuthIDS[i], authid))
+			// PRO or NUB中最好的成绩显示在计分板汇总
+			// server_print("Pro: %f, Nub: %f", Pro_Times[i], Noob_Tiempos[i]);
+			new Float: everBestTime = 999999998.0;
+			// if(equal(Pro_AuthIDS[i], authid) || equal(Noob_AuthIDS[i], authid))
+			if(equal(Pro_AuthIDS[i], authid))	//如果没有Pro or Nub相关记录 默认值是999999999.0
 			{
-				if(Pro_Times[i] < Noob_Tiempos[i])
+				if(Pro_Times[i] < everBestTime)
 				{
 					set_user_frags(id, imin)
 					cs_set_user_deaths(id, isec)
+					everBestTime = Pro_Times[i];
 				}
-				
-				if(Pro_Times[i] > Noob_Tiempos[i])
+			}
+			else if (equal(Noob_AuthIDS[i], authid))
+			{
+				if(Noob_Tiempos[i] < everBestTime)
 				{
 					set_user_frags(id, iminz)
 					cs_set_user_deaths(id, isecz)
+					everBestTime = Noob_Tiempos[i];
 				}
 			}
 			else if (equal(Wpn_AuthIDS[i], authid))
@@ -6155,8 +6214,9 @@ public kz_menu(id)
 	
 	new title[256];
 	//---------
-	new maptype[64],mapinfo[64];
+	new maptype[16];
 	new thetime[64];
+	new isMapFound = false;
 	get_time("%Y/%m/%d - %H:%M:%S",thetime,63)
 
 	new tl = get_timeleft()	
@@ -6169,20 +6229,26 @@ public kz_menu(id)
 	while( !feof( f ) )
 	{
 		fgets( f, data, 255 )
-		parse( data, map, 63 ,maptype,63)
-		strtok(data,map,63,maptype,63,' ')
-		
+		// parse( data, map, charsmax(map), maptype, charsmax(maptype));
+		strtok(data, map, charsmax(map), maptype, charsmax(maptype),' ')	
+		trim(map);
+		trim(maptype);	// 去除空格
+
 		if( equali( map, MapName ) )
 		{			
-			format(mapinfo,63,"%s",maptype)
+			formatex(MapInfo, charsmax(MapInfo), "%s", maptype);
+			// server_print("MapInfo is = %s =", MapInfo);
+			isMapFound = true;
 			break;
 		} 
 	}
 	fclose(f)
 	//-----
+
+	if(!isMapFound)	formatex(MapInfo, charsmax(MapInfo), "Unknown");
 	
-	formatex(title, 285, "\r#Yoiz's Home Kz Server ^n\dBased on \yProkreedz V2.31 \d Edited by \yAzuki daisuki~^n\dPresent time %s^nMap \y%s\d & Timeleft \y%d:%02d^n\dType map \y%s", thetime, MapName, tl/60, tl%60, mapinfo);
-	// formatex(title, 285, "\d[xiaokz] \r#KZ Server \dVisit \ywww.csxiaokz.com ^n\rQQ群:719383105^n\dBeiJing time \y%s^n\dMap \y%s\d & Timeleft \y%d:%02d^n\dType map \y%s", thetime, MapName, tl / 60, tl % 60, mapinfo);
+	formatex(title, 285, "\r#Yoiz's Home Kz Server ^n\dBased on \yProkreedz V2.31 \d Edited by \yAzuki daisuki~^n\dPresent time %s^nMap \y%s\d & Timeleft \y%d:%02d^n\dType map \y%s", thetime, MapName, tl/60, tl%60, MapInfo);
+	// formatex(title, 285, "\d[xiaokz] \r#KZ Server \dVisit \ywww.csxiaokz.com ^n\rQQ群:719383105^n\dBeiJing time \y%s^n\dMap \y%s\d & Timeleft \y%d:%02d^n\dType map \y%s", thetime, MapName, tl / 60, tl % 60, MapInfo);
 	
 	new menu = menu_create(title, "MenuHandler")  
 	new msgctspec[64];
@@ -6868,11 +6934,11 @@ public setmaps(id)
 		menu_additem(iMenu, opcion, szTempid,0)
 		formatex(opcion, charsmax(opcion),"\wBhop/Climb")
 		menu_additem(iMenu, opcion, szTempid,0)
-		formatex(opcion, charsmax(opcion),"\wHard")
+		formatex(opcion, charsmax(opcion),"\wLongjumps")
 		menu_additem(iMenu, opcion, szTempid,0)
 		formatex(opcion, charsmax(opcion),"\wSlide")
 		menu_additem(iMenu, opcion, szTempid,0)
-		formatex(opcion, charsmax(opcion),"\wBlocks")
+		formatex(opcion, charsmax(opcion),"\wDeathRun")
 		menu_additem(iMenu, opcion, szTempid,0)		
 		formatex(opcion, charsmax(opcion),"\wAxn")
 		menu_additem(iMenu, opcion, szTempid,0)
@@ -6919,16 +6985,16 @@ public choose(id, menu, item)
 			else if(item==2)
 			format(mapsmode,32,"Bhop/Climb")
 			else if(item==3)
-			format(mapsmode,32,"Hard")
+			format(mapsmode,32,"Longjumps")
 			else if(item==4)
 			format(mapsmode,32,"Slide")
 			else if(item==5)
-			format(mapsmode,32,"Blocks")			
+			format(mapsmode,32,"DeathRun")			
 			else if(item==6)
 			format(mapsmode,32,"Axn")
 		
 			ColorChat(id, GREEN, "^1%s ^3%s ^1Set Type: ^3%s",prefix, MapName,mapsmode)
-			
+			formatex(MapInfo, charsmax(MapInfo), "%s", mapsmode);
 			save_information(MapName,mapsmode)
 		}
 
@@ -8165,7 +8231,6 @@ public read_pro15()
 		new totime[25]
 		parse(prodata, totime, 24, Pro_Country[i], 3, Pro_AuthIDS[i], 31, Pro_Names[i], 31, Pro_Date[i], 31)
 		Pro_Times[i] = str_to_float(totime)
-		
 		// 如果读取到的是有效的记录(即STEAMID有效 or 时间 < 999999999)
 		if(equal(Pro_AuthIDS[i], "STEAM", 5)) {
 			new imin = floatround(Pro_Times[i] / 60.0, floatround_floor)
