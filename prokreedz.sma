@@ -98,7 +98,9 @@ mpbhop.amxx
 2021/12/30
 	1.修复玩家进服后最佳成绩计分板显示问题(BUG: 显示pro和nub cfg中对应行最佳成绩而不是对应玩家最好成绩)
 
-
+2022/1/1
+	BUGFIX
+	1. 修复梯子上noclip不暂停的问题
 //======================= #ToDo List#================================
 	1.完善pro_top
 	2.增加BOT控制
@@ -3197,12 +3199,16 @@ public Pause(id)
 	
 	if(!IsPaused[id]) 
 	{
-		if( ((!( pev( id, pev_flags ) & FL_ONGROUND2 ) && !IsOnLadder(id)) || (equal(entname, "func_door") && !IsOnLadder(id))) && timer_started[id] && !tptostart[id])
+		client_print(id, print_chat, "Pausing #1");
+		if( ( (!( pev( id, pev_flags ) & FL_ONGROUND2 ) && !IsOnLadder(id) ) || (equal(entname, "func_door") && !IsOnLadder(id))) && timer_started[id] && !tptostart[id])
 		{
-			kz_chat(id, "%L", id, "KZ_GROUND_PAUSE")
-			return PLUGIN_HANDLED
+			if(pev(id, pev_movetype) != MOVETYPE_NOCLIP) {	// 保证了在梯子上使用Noclip也可以暂停计时: 使用noclip后 如果在梯子上 movetype从MOVETYPE_ARI -> MOVETYPE_NOCLIP 需要放行NOCLIP以暂停
+				client_print(id, print_chat, "KZ_GROUND_PAUSE");
+				kz_chat(id, "%L", id, "KZ_GROUND_PAUSE")	//必须在地面上或者梯子上才能暂停计时
+				return PLUGIN_HANDLED
+			}
 		}
-		
+		client_print(id, print_chat, "Pausing #2");
 		tphook_user[id] = true
 		
 		g_pausetime[id] = get_gametime() - timer_time[id]
@@ -3226,6 +3232,7 @@ public Pause(id)
 	}
 	else 
 	{
+		client_print(id, print_chat, "Pausing #3");
 		if( (!( pev( id, pev_flags ) & FL_ONGROUND2 ) && !IsOnLadder(id)) || (equal(entname, "func_door") && !IsOnLadder(id)))
 		{
 			kz_chat(id, "%L", id, "KZ_GROUND_UNPAUSE")
@@ -3244,8 +3251,8 @@ public Pause(id)
 		
 		if(timer_started[id])
 		{
-			// kz_chat(id, "%L", id, "KZ_PAUSE_OFF")
-			client_print(id, print_center, " ")
+			kz_chat(id, "%L", id, "KZ_PAUSE_OFF")
+			// client_print(id, print_center, " ")
 			timer_time[id] = get_gametime() - g_pausetime[id] 			
 		}
 		
@@ -3275,7 +3282,7 @@ public Pause(id)
 		}
 		tphook_user[id] = false
 		inpausechecknumbers[id] = 0
-		
+		client_print(id, print_chat, "Pausing #4");
 		message_begin(MSG_ONE, get_user_msgid("ScreenFade"), {0,0,0}, id)
 		write_short(1<<10)
 		write_short(1<<10)
@@ -5108,19 +5115,19 @@ public noclip(id)
 		return PLUGIN_HANDLED
 	}
 	
+	// 不在地上 or 梯子上 且在计时 则返回
 	if( !( pev( id, pev_flags ) & FL_ONGROUND2 ) && !IsOnLadder(id) && timer_started[id] && !IsPaused[id])
 	{
 		return PLUGIN_HANDLED
 	}
 	
-
 	set_user_noclip(id, noclip)
-	
+
 	if(!IsPaused[id] && noclip && timer_started[id])
 	{
 		Pause(id)
 	}
-	
+
 	if(IsPaused[id] && (get_pcvar_num(kz_noclip_pause) == 1))
 	{
 		if(noclip)
@@ -5566,7 +5573,7 @@ public FwdHamPlayerSpawn(id)
 					everBestTime = Pro_Times[i];
 				}
 			}
-			else if (equal(Noob_AuthIDS[i], authid))
+			if (equal(Noob_AuthIDS[i], authid))
 			{
 				if(Noob_Tiempos[i] < everBestTime)
 				{
@@ -5575,10 +5582,14 @@ public FwdHamPlayerSpawn(id)
 					everBestTime = Noob_Tiempos[i];
 				}
 			}
-			else if (equal(Wpn_AuthIDS[i], authid))
+			if (equal(Wpn_AuthIDS[i], authid))
 			{
-				set_user_frags(id, iminw)
-				cs_set_user_deaths(id, isecw)
+				if(Wpn_Timepos[i] < everBestTime)
+				{
+					set_user_frags(id, iminw)
+					cs_set_user_deaths(id, isecw)
+					everBestTime = Wpn_Timepos[i];
+				}
 			}
 		}
 		
