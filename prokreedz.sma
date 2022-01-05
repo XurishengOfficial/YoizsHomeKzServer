@@ -3199,7 +3199,7 @@ public Pause(id)
 	
 	if(!IsPaused[id]) 
 	{
-		client_print(id, print_chat, "Pausing #1");
+		// client_print(id, print_chat, "Pausing #1");
 		if( ( (!( pev( id, pev_flags ) & FL_ONGROUND2 ) && !IsOnLadder(id) ) || (equal(entname, "func_door") && !IsOnLadder(id))) && timer_started[id] && !tptostart[id])
 		{
 			if(pev(id, pev_movetype) != MOVETYPE_NOCLIP) {	// 保证了在梯子上使用Noclip也可以暂停计时: 使用noclip后 如果在梯子上 movetype从MOVETYPE_ARI -> MOVETYPE_NOCLIP 需要放行NOCLIP以暂停
@@ -3208,7 +3208,7 @@ public Pause(id)
 				return PLUGIN_HANDLED
 			}
 		}
-		client_print(id, print_chat, "Pausing #2");
+		// client_print(id, print_chat, "Pausing #2");
 		tphook_user[id] = true
 		
 		g_pausetime[id] = get_gametime() - timer_time[id]
@@ -3232,7 +3232,7 @@ public Pause(id)
 	}
 	else 
 	{
-		client_print(id, print_chat, "Pausing #3");
+		// client_print(id, print_chat, "Pausing #3");
 		if( (!( pev( id, pev_flags ) & FL_ONGROUND2 ) && !IsOnLadder(id)) || (equal(entname, "func_door") && !IsOnLadder(id)))
 		{
 			kz_chat(id, "%L", id, "KZ_GROUND_UNPAUSE")
@@ -3282,7 +3282,7 @@ public Pause(id)
 		}
 		tphook_user[id] = false
 		inpausechecknumbers[id] = 0
-		client_print(id, print_chat, "Pausing #4");
+		// client_print(id, print_chat, "Pausing #4");
 		message_begin(MSG_ONE, get_user_msgid("ScreenFade"), {0,0,0}, id)
 		write_short(1<<10)
 		write_short(1<<10)
@@ -6608,12 +6608,13 @@ public JumpMenu(id)
 	formatex(title, 255, "\rClimb Menu")
 	new menu = menu_create(title, "JumpMenuHandler")  
 	
-	new msgcheck[64], msggocheck[64], msgpause[64], msggolastcheck[64], msgSaveAngle[64]	//, msgctspec[64]
+	new msgcheck[64], msggocheck[64], msgpause[64], msggolastcheck[64], msgSaveAngle[64], msgUndoGocheck[64]	//, msgctspec[64]
 	formatex(msgcheck, 63, "%L - [\r#%i\w]", id, "KZ_CHECK_IS",  checknumbers[id])
 	formatex(msggocheck, 63, "%L - [\r#%i\w]", id, "KZ_GOCHECK_IS", gochecknumbers[id])
-	formatex(msggolastcheck, 63, "%L \r*最多返回%d个*^n", id, "KZ_JUMPMENU_MENU5", get_cvar_num("kz_checkpoints_num"));
+	formatex(msggolastcheck, 63, "%L^n", id, "KZ_CHECKPOINTS_NUM", get_cvar_num("kz_checkpoints_num"));	// KZ_CHECKPOINTS_NUM = GoLastCheck \r*Max Num %d* || 读上一个存点 \r*最多返回%d个*
 	formatex(msgpause, 63, "%L - [%s\w]^n", id, "KZ_PAUSE", IsPaused[id] ? "\yON" : "\rOFF");
-	formatex(msgSaveAngle, 63, "读取存点角度 - [%s\w]", gc1[id] ? "\yON" : "\rOFF");
+	formatex(msgSaveAngle, 63, "%L - [%s\w]", id, "KZ_CHECKPOINT_ANGLE", gc1[id] ? "\yON" : "\rOFF");
+	formatex(msgUndoGocheck, 63, ( timer_started[id] && gochecknumbers[id] )? "\y%L" : "\d%L", id, "KZ_UNDOGOCHECK");
 	// formatex(msgctspec, 63, "%L^n", id, (cs_get_user_team(id) == CS_TEAM_CT) ? "KZ_SPECTATOR" : "KZ_CT")
 	
 	menu_additem( menu, msgcheck, "1" )
@@ -6623,7 +6624,7 @@ public JumpMenu(id)
 	menu_additem( menu, msgpause, "4" )
 	menu_vadditem(menu, "5", _, _, "%L^n", id, "KZ_JUMPMENU_MENU1")
 	
-	menu_additem( menu, ( timer_started[id] && gochecknumbers[id] )? "\yUndo GoCheck" : "\dUndo GoCheck", "6")
+	menu_additem( menu, msgUndoGocheck, "6")
 	menu_additem( menu, msgSaveAngle, "7");	 																		// 是否保留存点角度
 	menu_vadditem(menu, "8", _, _, "%L", id, "KZ_JUMPMENU_MENU8")
 	// menu_vadditem(menu, "6", _, _, "%L^n", id, "KZ_JUMPMENU_MENU7")
