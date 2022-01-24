@@ -72,7 +72,7 @@ public plugin_init()
 	set_cvar_string("amx_nextmap", g_nextMap)
 	format(szString3, 31, "%s %d", g_mapCycle, g_pos)	// save lastmapcycle settings
 	set_localinfo("lastmapcycle", szString3)
-	set_task(600.0, "randomNextMap", _, _, _, "b", _);
+	// set_task(600.0, "randomNextMap", _, _, _, "b", _);
 }
 
 public randomNextMap_admin(id) {
@@ -82,6 +82,7 @@ public randomNextMap_admin(id) {
 	set_cvar_string("amx_nextmap", g_nextMap);
 	new name[64];
 	get_user_name(id, name, charsmax(name));
+	client_print(0, print_chat, "[nextmap.amxx]: Next Map Changed to %s", g_nextMap);
 	log_amx("Admin: %s launched Random next map: %s ",name, g_nextMap);
 }
 public randomNextMap() {

@@ -94,7 +94,7 @@ public readCfgFile() {
             _player, charsmax(_player),
             _usp, charsmax(_usp),
             _knife, charsmax(_knife)
-        )
+        ) 
         // server_print("%s, %s, %s, %s", _vipSteamId, _player_mdl, _usp_mdl, _knife_mdl);
         // "models/player/_player/_player.mdl"
         // "models/_usp/p__usp.mdl"

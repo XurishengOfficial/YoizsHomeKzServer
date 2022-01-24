@@ -1,0 +1,29 @@
+WRTime
+show_motd
+ProTop_show
+WEB_URL		http://39.105.49.178:22
+
+img src=%s/flags/err.png	cstrike\addons\amxmodx\configs\kz\flags
+
+网站搭建目录要连接到//http://kreedz.cn/addons/amxmodx/configs/kz/
+http://127.0.0.1:23233/addons/amxmodx/configs/kz/pro_top.html
+
+addons/amxmodx/configs/kz
+
+top15menu(id)
+
+ProTop_show
+
+kz_showhtml_motd
+
+top15handler => ProTop_show() => kz_showhtml_motd(id, PRO_TOP, MapName)
+
+kz_sql_files = register_cvar("kz_sql_files", "") // Path of the PHP files
+formatex(buffer, 1000, "<html><head><meta http-equiv=^"Refresh^" content=^"0;url=http://%s/pro15.php?map=%s^"></head><body><p>LOADING...</p></body></html>", filepath, map)
+
+kz_webtop_url = register_cvar("kz_webtop_url", "addons/amxmodx/configs/kz")		//Top URL http://....
+get_pcvar_string(kz_webtop_url, WEB_URL, 63)
+
+CmdSayWR(id) 	//会更新WR数据并写入html文件设置相关CSS
+
+file:///D:/Games/Steam/steamapps/common/Half-Life/cstrike/addons/amxmodx/configs/kz/flags/CN.png

@@ -1333,6 +1333,7 @@ public client_putinserver(id)
 		player_admin[id]=true;
 	}
 }
+
 public Dojof(taskid)
 {
 	taskid-=212398;
@@ -1364,6 +1365,7 @@ public Dojof(taskid)
 			{
 				set_hudmessage(255, 0, 0, -1.0, 0.6, 0, 0.0, 0.7, 0.0, 0.0, h_speed);
 			}
+			// ??hud????
 			show_hudmessage(taskid,"%L",LANG_SERVER,"UQSTATS_JOF", jof[show_id]);
 		}
 	}
@@ -1399,6 +1401,7 @@ public DoSpeed(taskid)
 					
 		new Float:speedy = vector_length(velocity);
 		
+		// speedtype true/false ??HUD???
 		if(speedtype[taskid])
 		{
 			set_dhudmessage(speed_r, speed_g, speed_b, speed_x, speed_y, 0, 0.0, 0.1, 0.0, 0.0);
@@ -1992,7 +1995,7 @@ public epta(id,Float:or[3],direct_strafe,l_lost[NSTRAFES][NVAR],full,ducked,str_
 	}
 }
 
-
+// #MARK:
 public fwdPreThink( id )
 {
 	if(g_userConnected[id]==true && g_pBot[id]==false)
@@ -8341,13 +8344,13 @@ public show_speed(id)
 			{
 				Color_Chat_Lang(id,BLUE,"%L",LANG_SERVER,"UQSTATS_SPEED_E", prefix);
 				speedon[id]=true;
-				
+				// ??????
 				set_task(0.1, "DoSpeed", id+212299, "", 0, "b", 0);
 			}
 			else 
 			{
 				speedon[id]=false;
-				
+				// ??????
 				if( task_exists(id+212299, 0) )
 					remove_task(id+212299, 0);
 					

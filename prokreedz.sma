@@ -101,6 +101,15 @@ mpbhop.amxx
 2022/1/1
 	BUGFIX
 	1. 修复梯子上noclip不暂停的问题
+	2. 优化计分板逻辑
+
+2022/1/5
+	Optimize
+	1. 优化主菜单多语言菜单支持
+
+2022/1/6
+	Feature
+	1. 新增pro_top (nub_top还没搞)
 //======================= #ToDo List#================================
 	1.完善pro_top
 	2.增加BOT控制
@@ -361,6 +370,12 @@ new Trie:STEAMID_NUB_RANK;
 new Pro_Country[104][8]//TOP显示国旗
 new Noob_Country[104][8]//TOP显示国旗
 new Wpn_Country[104][8]//TOP显示国旗
+
+// new const g_iTopColors[][] = {
+// 	"#ff0000",
+// 	"#07fcff",
+// 	"#fff007"
+// }
 #endif
 
 new g_maxplayers;
@@ -473,7 +488,6 @@ new kz_hook_speed
 new kz_pause
 new kz_noclip_pause
 new kz_nvg
-new kz_nvg_colors
 new kz_vip
 new kz_respawn_ct
 
@@ -650,7 +664,6 @@ public plugin_init()
 	kz_pause = register_cvar("kz_pause", "1")
 	kz_noclip_pause = register_cvar("kz_noclip_pause", "1")
 	kz_nvg = register_cvar("kz_nvg","1")
-	kz_nvg_colors = register_cvar("kz_nvg_colors","5 0 255")
 	kz_vip = register_cvar("kz_vip","1")
 	kz_respawn_ct = register_cvar("kz_respawn_ct", "1")
 	kz_semiclip = register_cvar("kz_semiclip", "1")
@@ -672,7 +685,7 @@ public plugin_init()
 	kz_sql_files = register_cvar("kz_sql_files", "") // Path of the PHP files
 	#else
 	// kz_webtop_url = register_cvar("kz_webtop_url", "http://60.205.191.245/amxmodx/kz/")		//My Servers by Perfectslife
-	kz_webtop_url = register_cvar("kz_webtop_url", "http://60.205.191.245/addons/amxmodx/configs/kz")		//Top URL http://....
+	kz_webtop_url = register_cvar("kz_webtop_url", "")		//Top URL http://....
 	get_pcvar_string(kz_webtop_url, WEB_URL, 63)
 	#endif
 
@@ -682,8 +695,8 @@ public plugin_init()
 	
 	register_clcmd("amx_udwr","cmdUpdateWRdata")
 	register_clcmd("amx_mapsmod","setmaps")
-	register_clcmd("say /adminmenu","AdminMenu",KZ_LEVEL)
-	register_clcmd("say /op","AdminMenu",KZ_LEVEL)
+	register_clcmd("say /adminmenu","AdminMenu", KZ_LEVEL)
+	register_clcmd("say /op","AdminMenu", KZ_LEVEL)
 	register_clcmd("say /tep", "Teleport")
 	register_clcmd("/cp","CheckPoint")
 	register_clcmd("/gc", "GoCheck")
@@ -1779,7 +1792,7 @@ start_climb_bot(id)
 {
 	set_pev(g_bot_id, pev_gravity, 1.0);  // pev_gravity
 	set_pev(g_bot_id, pev_movetype, MOVETYPE_WALK);   // pev_movetype
-	reset_checkpoints(g_bot_id);
+	reset_checkpoints(id);
 	IsPaused[g_bot_id] = false;
 	timer_started[g_bot_id] = true;
 	timer_time[g_bot_id] = get_gametime();
@@ -1790,7 +1803,7 @@ start_climb_bot_c(id)
 {
 	set_pev(gc_bot_id, pev_gravity, 1.0);  // pev_gravity
 	set_pev(gc_bot_id, pev_movetype, MOVETYPE_WALK);   // pev_movetype
-	reset_checkpoints(gc_bot_id);
+	reset_checkpoints(id);
 	IsPaused[gc_bot_id] = false;
 	timer_started[gc_bot_id] = true;
 	timer_time[gc_bot_id] = get_gametime();
@@ -2099,7 +2112,7 @@ public cmdUpdateWRdata(id)
 		new authid[32]
 		get_user_authid(id, authid,31)
 		
-		if(get_user_flags(id) & KZ_LEVEL || equali(authid, "STEAM_0:0:60711210") || is_user_localhost(id))
+		if(get_user_flags(id) & KZ_LEVEL || is_user_localhost(id))
 		{
 			UpdateRecords();
 			return PLUGIN_HANDLED;
@@ -2211,6 +2224,7 @@ public ExtendTime(id)//延长时间
 	if (! (get_user_flags( id ) & KZ_LEVEL_VIP ))
 	{
 		server_print("NOT VIP");
+		ColorChat(id, GREEN,  "%s ^x01Only VIP can addtime!", prefix)
 		return PLUGIN_HANDLED
 	}
 	new arg[32];
@@ -2227,7 +2241,10 @@ public ExtendTime(id)//延长时间
 		{
 			set_pcvar_num(mp_timelimit, newlimit);
 			new tl = get_timeleft();
-			ColorChat(0, GREEN, "%s ^1ADMIN: ^3%s ^1%L^3 %d ^1Min, TiMe Left: (^3%d:%02d^1)", prefix, name, LANG_PLAYER, "KZ_ETIME_ADDTIME", str_to_num(arg), (tl / 60), (tl % 60));
+			if(is_user_admin(id))
+				ColorChat(0, GREEN, "%s ^1ADMIN: ^3%s ^1%L^3 %d ^1Min, TiMe Left: (^3%d:%02d^1)", prefix, name, LANG_PLAYER, "KZ_ETIME_ADDTIME", str_to_num(arg), (tl / 60), (tl % 60));
+			else
+				ColorChat(0, GREEN, "%s ^1VIP: ^3%s ^1%L^3 %d ^1Min, TiMe Left: (^3%d:%02d^1)", prefix, name, LANG_PLAYER, "KZ_ETIME_ADDTIME", str_to_num(arg), (tl / 60), (tl % 60));
 		}
 		else
 		{
@@ -6683,6 +6700,10 @@ public JumpMenuHandler(id , menu, item)
 
 public AdminMenu(id)
 {
+	if( !( (get_user_flags(id) & KZ_ADMIN) || (get_user_flags(id) & KZ_LEVEL) || (get_user_flags(id) & KZ_LEVEL_VIP) ) ) {
+		kz_chat(id, "%L", id, "KZ_NO_ACCESS");
+		return PLUGIN_HANDLED
+	}
 	new menu = menu_create("\rKreedz Admin Menu\w", "AdminMenuHandler")
 	new hidespec[64]
 	formatex(hidespec, 63, "隐藏在观察者 - %s",  g_bHideMe[id] ? "\yOn" : "\rOff" )
@@ -6925,9 +6946,6 @@ public ServerInfo_Console(id)
         client_cmd(id, "echo ^"                        Based on Prokreedz V2.31 ☺              ^"")
         client_cmd(id, "echo ^"                        Edited by Azuki daisuki~ ☺              ^"")
         client_cmd(id, "echo ^"                        Special thanks to XiaoKz & Perfectslife ☺              ^"")
-        // client_cmd(id, "echo ^"                        -------------------------------------------------------------^"")
-        // client_cmd(id, "echo ^"                                     QQ:         375904504           ^"")      
-        // client_cmd(id, "echo ^"                                   E-Mail:         375904504@qq.com     ^"")
         client_cmd(id, "echo ^"                =========================================^"")
 }
 
@@ -7007,7 +7025,7 @@ public choose(id, menu, item)
 		
 			ColorChat(id, GREEN, "^1%s ^3%s ^1Set Type: ^3%s",prefix, MapName,mapsmode)
 			formatex(MapInfo, charsmax(MapInfo), "%s", mapsmode);
-			save_information(MapName,mapsmode)
+			save_information(MapName, mapsmode)
 		}
 
 	}
@@ -8708,12 +8726,9 @@ public read_Wpn15()
 // #MARK: NOSQL ProTop_show	WEB_URL = "addons/amxmodx/configs/kz"
 public ProTop_show(id)
 {		
-	// client_print(0, print_chat, "NoSQL ProTop_show");
 	new fh = fopen( PRO_PATH, "w" )
 	fprintf( fh, "<meta charset=UTF-8>" )
-	fprintf( fh, "<link rel=stylesheet href=%s/topcss/sb.css><table><tr id=a>",WEB_URL )
-	// client_print(0, print_chat, "<link rel=stylesheet href=%s/topcss/sb.css><table><tr id=a>", WEB_URL);
-
+	fprintf( fh, "<link rel=stylesheet href=%s/topcss/sb.css><table><tr id=a>", WEB_URL)	//引入CSS 同时设置默认文件夹就在/addons/amxmodx/configs/kz
 	fprintf( fh, "<th width=1%%> # <th width=15%%> Name <th width=10%%> Time <th width=10%%> To WR <th width=10%%> Date ")
 	
 	new line[501],btime_str[4],ctime_str[65],name[33],imgs[100],Float:difftime,wrdiff[65]//,String:sComm[32];
@@ -8810,7 +8825,7 @@ public ProTop_show(id)
 				// Pro_Date[i]
 				// )
 				formatex( line, 500,"<tr %s><td>%s<td><img src = flags/%s.png align=absmiddle height=32 width=32> <b>%s</b><td>%s<td>**.**.**<td>%s",
-				i % 2 ? "bgcolor=#000000" : NULLSTR ,
+				i % 2 ? "bgcolor=#000000" : "bgcolor=#808080" ,
 				btime_str,
 				Pro_Country[i],
 				htmlspecialchars(name),
@@ -8827,19 +8842,11 @@ public ProTop_show(id)
 	
 
 	fprintf( fh, "</td></tr><tr id=d><td></td></tr><tr id=a>" )
-	fprintf( fh, "<div align=center><f>%s</div>",WRTime)
+	fprintf( fh, "<div align=center><f>%s</div>", WRTime)
 	fclose( fh )
-	new PRO_PATHs[1001]
-	// formatex(PRO_PATHs, 1000,"<html><head><meta http-equiv=^"Refresh^" content=^"0;url=%s/pro_top.html^"></head><body><p>LOADING...</p></body></html>",WEB_URL);
-	formatex(PRO_PATHs, 1000,"addons/amxmodx/configs/kz/pro_top.html");
-	// formatex(PRO_PATHs, 1000,"<html><head><meta http-equiv=^"Refresh^" content=^"0;url=addons/amxmodx/configs/kz/pro_top.html^"></head><body><p>LOADING...</p></body></html>");
-
-	client_print(id, 2, "Before show_motd");
-	client_print(id, 2, "%s", PRO_PATHs);
 	// 显示内容时 url中内容是客户本地的html文件
 	// 显示文件时 url中显示的是服务器本地的html文件
-	// #MARK: 后续修改: 将所有格式都引用自服务器本地文件 避免远程ip; 每次使用pro_top命令时自动生成相应的网页
-	show_motd( id, PRO_PATHs, MotdName );
+	show_motd( id, "http://121.4.105.22:80/pro_top.html", MotdName );
 
 	return PLUGIN_HANDLED
 }
@@ -8848,7 +8855,7 @@ public NoobTop_show(id)
 {
 	new fh = fopen( NUB_PATH, "w" )
 	fprintf( fh, "<meta charset=UTF-8>" )
-	fprintf( fh, "<link rel=stylesheet href=%s/topcss/sb.css><table><tr id=a>",WEB_URL )
+	fprintf( fh, "<link rel=stylesheet href=%s/topcss/sb.css><table><tr id=a>", WEB_URL )
 	fprintf( fh, "<th width=1%%> # <th width=15%%> Name <th width=10%%> Time <th width=10%%> CPs/TPs <th width=10%%> Date ")
 	
 	new line[501],btime_str[4],ctime_str[50],name[33]
@@ -8897,7 +8904,7 @@ public NoobTop_show(id)
 	fclose( fh )
 	new NUB_PATHs[1001]
 	formatex(NUB_PATHs, 1000, "<html><head><meta http-equiv=^"Refresh^" content=^"0;url=%s/nub_top.html^"></head><body><p>LOADING...</p></body></html>",WEB_URL)
-	show_motd( id, NUB_PATHs, MotdName )
+	show_motd( id, "http://121.4.105.22:80/nub_top.html", MotdName )
 
 	return PLUGIN_HANDLED
 }

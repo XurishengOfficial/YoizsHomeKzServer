@@ -116,11 +116,14 @@ public report_menu(id, menu, item)
                     server_print("delete file success!");
                     client_print(id, print_chat, "对应地图的排行已重置, 重启服务器生效!");
                 }
-                else
-                    server_print("delete file failed!");
+                else {
+                    server_print("delete file failed!"); 
+                    client_print(id, print_chat, "删除相应地图排行文件失败!");
+                }
             }
             else {
                 server_print("file %s NOT exists!", top15FilePath);
+                client_print(id, print_chat, "相关地图排行文件不存在, 删除失败!");
             }
             server_print("============================");
         }
