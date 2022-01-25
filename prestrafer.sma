@@ -30,6 +30,11 @@ new Float:preladderspeed[33];
 new Float:preduckspeed[33];
 new Float:bhopgainspeed[33];
 
+new g_iFramesOnGround[33];
+new Float:g_flSpeed[33];
+// new Float:g_flSpeedPrev[33];
+new Float:g_flGroundTouchSpeed[33];
+
 public plugin_init() {
 	register_plugin(PLUGIN, VERSION, AUTHOR);
 	register_forward( FM_PlayerPreThink,	"fwdPreThink",	0 );
@@ -56,8 +61,8 @@ public tooglePre(id)
 
 public fwdPreThink( id )
 {
-	if(is_user_bot(id))
-		return FMRES_IGNORED;
+	// if(is_user_bot(id))
+	// 	return FMRES_IGNORED;
 
 	if(g_userConnected[id]==true)
 	{	
@@ -97,17 +102,17 @@ public fwdPreThink( id )
 			static button, oldbuttons, flags;
 			button = pev(id, pev_button );
 			flags = pev(id, pev_flags );
-			oldbuttons = pev( id, pev_oldbuttons );
+			oldbuttons = pev(id, pev_oldbuttons );
 			
-			new Float:velocity[3],Pmaxspeed;
-			Pmaxspeed = pev(id, pev_maxspeed);
+			new Float:velocity[3], Pmaxspeed;
 
+			Pmaxspeed = pev(id, pev_maxspeed);
 			pev(id, pev_velocity, velocity);
 			movetype[id] = pev(id, pev_movetype);
-			
-			if( flags&FL_ONGROUND && flags&FL_INWATER )  
-					velocity[2] = 0.0;
-
+			g_flSpeed[id] = floatsqroot(floatadd(floatmul(velocity[0], velocity[0]), floatmul(velocity[1], velocity[1])));  // 开根号 x*x+y*y
+			// new Float:maxPrestrafe = 1.2 * Pmaxspeed;
+	
+			if( flags&FL_ONGROUND && flags&FL_INWATER )  velocity[2] = 0.0;
 			speed[id] = vector_length(velocity);	
 			
 			new is_spec_user[33];
@@ -121,10 +126,49 @@ public fwdPreThink( id )
 				notjump[id]=false;
 			}
 			
-			if( flags&FL_ONGROUND )
+			if( flags & FL_ONGROUND )
 			{
 				notjump[id]=true;
-				
+				g_iFramesOnGround[id]++;	// 在地面上的帧数
+			}
+			else g_iFramesOnGround[id] = 0;	// 不在地面上 FOG置零
+			if (g_iFramesOnGround[id] == 1) g_flGroundTouchSpeed[id] = g_flSpeed[id];	// 1帧 记录玩家落地速度
+
+			new FOGTYPE[ 33 ], preHudRGB[ 3 ];
+			switch(g_iFramesOnGround[id])
+			{
+				case 0:
+				{
+					// nothing to do
+				}
+				case 1:
+				{
+					format(FOGTYPE, 32, "Perfect");
+					preHudRGB[ 0 ] = 0;
+					preHudRGB[ 1 ] = 255;
+					preHudRGB[ 2 ] = 0;
+				}
+				case 2:
+				{
+					format(FOGTYPE, 32, "Good");
+					preHudRGB[ 0 ] = 255;
+					preHudRGB[ 1 ] = 255;
+					preHudRGB[ 2 ] = 0;
+				}
+				case 3:
+				{
+					format(FOGTYPE, 32, "Bad");
+					preHudRGB[ 0 ] = 255;
+					preHudRGB[ 1 ] = 0;
+					preHudRGB[ 2 ] = 0;
+				}
+				default:
+				{
+					format(FOGTYPE, 32, "Very Bad");
+					preHudRGB[ 0 ] = 220;
+					preHudRGB[ 1 ] = 20;
+					preHudRGB[ 2 ] = 60;
+				}
 			}
 
 			if( (movetype[id] == MOVETYPE_FLY) &&  (button&IN_FORWARD || button&IN_BACK || button&IN_LEFT || button&IN_RIGHT ) )
@@ -139,6 +183,7 @@ public fwdPreThink( id )
 				notjump[id]=true;
 			}
 			
+			// ladder pre
 			if( movetype[id] != MOVETYPE_FLY && ladderjump[id]==true)
 			{
 				notjump[id]=true;
@@ -164,6 +209,7 @@ public fwdPreThink( id )
 				}
 			}
 			
+			// dd count
 			if( button & IN_DUCK && !(oldbuttons &IN_DUCK) && flags & FL_ONGROUND)
 			{
 				if (speed[id] > 110) {
@@ -172,18 +218,19 @@ public fwdPreThink( id )
 					ddnum[id] = 0;
 				}
 			}
-	
+
+			// bj sbj duckbhop
 			if( button & IN_JUMP && !( oldbuttons & IN_JUMP ) && flags & FL_ONGROUND )
 			{	
 				bhop_num[id]++;
-				notjump[id]=false;
+				notjump[id] = false;
 
-				ddnum[id]=0;
+				ddnum[id] = 0;
 				pev(id, pev_velocity, velocity);
 				static i;
-				in_air[id]	= true;
-				g_Jumped[id]	= true;
-		
+				in_air[id] = true;
+				g_Jumped[id] = true;
+
 				for( i = 1; i < max_players; i++ )
 				{
 					if( (i == id || is_spec_user[i]))
@@ -193,7 +240,7 @@ public fwdPreThink( id )
 							if(bhop_num[id] > 0) 
 							{
 								preduckspeed[id] = speed[id]
-								if(Pmaxspeed * 1.2 >speed[id])
+								if(Pmaxspeed * 1.2 > speed[id]) // 未超速
 								{
 									if ( floatround(preladderspeed[id]) > 20) 
 									{
@@ -205,36 +252,45 @@ public fwdPreThink( id )
 										bhopgainspeed[id] = prebhopspeed[id];
 										prebhopspeed[id] = 0.0;
 									}
-									
-									if ( bhopgainspeed[id] > speed[id] ) 
+									if ( bhopgainspeed[id] > speed[id] ) // 起跳后减速
 									{
-										new szMessage[ 32 ];
-										formatex( szMessage, charsmax( szMessage ), "%.2f(-%.1f)", speed[id], bhopgainspeed[id] - speed[id] );
-										send_hudmessage(i,szMessage, -1.0 ,0.65,  255, 0, 0, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
+										new szMessage[ 64 ];
+										if (8 <= g_iFramesOnGround[id])	// LJ走地速...等FOG>=8的情况
+										{
+											formatex( szMessage, charsmax( szMessage ), "%.2f", speed[id]);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, 0, 100, 255, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
+										}
+										else
+										{
+											formatex( szMessage, charsmax( szMessage ), "%s %.2f(-%.1f)^nFOG:%i (%.2f)", FOGTYPE, speed[id], bhopgainspeed[id] - speed[id], g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
+										}
+										
 									}
 									else if ( bhopgainspeed[id] == 0.0 || bhopgainspeed[id] == speed[id]) {
-										new szMessage[ 32 ];
+										new szMessage[ 64 ];
 										formatex( szMessage, charsmax( szMessage ), "%.2f", speed[id] );
 										send_hudmessage(i,szMessage, -1.0 ,0.65,  0, 100, 255, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
 									}
-									else if ( bhopgainspeed[id] < speed[id] ) {
-										new szMessage[ 32 ];
-										formatex( szMessage, charsmax( szMessage ), "%.2f(+%.1f)", speed[id], speed[id] - bhopgainspeed[id]);
-										send_hudmessage(i,szMessage, -1.0 ,0.65,  0, 255, 0, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
+									else if ( bhopgainspeed[id] < speed[id] ) {	// 起跳后加速
+										new szMessage[ 64 ];
+										formatex( szMessage, charsmax( szMessage ), "%s %.2f(+%.1f)^nFOG:%i (%.2f)", FOGTYPE, speed[id], speed[id] - bhopgainspeed[id], g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
 									}
 								}
-								else
+								else // 超速
 								{
 									if ( bhopgainspeed[id] > speed[id] ) 
 									{
 										new szMessage[ 64 ];
-										formatex( szMessage, charsmax( szMessage ), "Your prestrafe %.2f(-%.1f) is too high(%.01f)", speed[id], bhopgainspeed[id] - speed[id],Pmaxspeed*1.2 );
-										send_hudmessage(i,szMessage, -1.0 ,0.65,  255, 0, 0, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
+										formatex( szMessage, charsmax( szMessage ), "Your Prestrafe %.2f(-%.1f) is too high(%.01f)^nFOG:%i (%.2f)", speed[id], bhopgainspeed[id] - speed[id], 1.2 * Pmaxspeed, g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
 									}
 									else if ( bhopgainspeed[id] < speed[id] ) {
 										new szMessage[ 64 ];
-										formatex( szMessage, charsmax( szMessage ), "Your prestrafe %.2f(+%.1f) is too high(%.01f)", speed[id], speed[id] - bhopgainspeed[id],Pmaxspeed*1.2);
-										send_hudmessage(i,szMessage, -1.0 ,0.65,  0, 255, 0, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
+										formatex( szMessage, charsmax( szMessage ), "Your Prestrafe %.2f(+%.1f) is too high(%.01f)^nFOG:%i (%.2f)", speed[id], speed[id] - bhopgainspeed[id], 1.2 * Pmaxspeed, g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
+
 									}
 								}
 							}
@@ -248,6 +304,7 @@ public fwdPreThink( id )
 				g_reset[id] = true;
 			}
 			
+			// 多次小跳显示地速
 			if( button & IN_DUCK && !(oldbuttons &IN_DUCK) && flags & FL_ONGROUND  && !is_user_duck[id] )
 			{	
 				for( new i = 1; i < max_players; i++ )
@@ -257,7 +314,7 @@ public fwdPreThink( id )
 						if(plrPre[i])
 						{
 							if(ddnum[id] > 0) {
-								if(Pmaxspeed * 1.2 >speed[id]) 
+								if(Pmaxspeed * 1.2 > speed[id]) 
 								{
 									prebhopspeed[id] = speed[id]
 									if ( floatround(preladderspeed[id]) > 20) {
@@ -269,34 +326,35 @@ public fwdPreThink( id )
 										preduckspeed[id] = 0.0;
 									}
 									if ( duckgainspeed[id] > speed[id] ) {
-										new szMessage[ 32 ];
-										formatex( szMessage, charsmax( szMessage ), "%.2f(-%.1f)", speed[id], duckgainspeed[id] - speed[id] );
-										send_hudmessage(i,szMessage, -1.0 ,0.65,  255, 0, 0, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
+										new szMessage[ 64 ];
+										formatex( szMessage, charsmax( szMessage ), "%s %.2f(-%.1f)^nFOG:%i (%.2f)", FOGTYPE, speed[id], duckgainspeed[id] - speed[id], g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
+
 									}
 									else if ( duckgainspeed[id] == 0.0 || duckgainspeed[id] == speed[id]) {
-										new szMessage[ 32 ];
+										new szMessage[ 64 ];
 										formatex( szMessage, charsmax( szMessage ),  "%.2f", speed[id] );
 										send_hudmessage(i,	szMessage, -1.0 ,0.65,  0, 100, 255, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
 
 									}
 									else if ( duckgainspeed[id] < speed[id] ) {
-										new szMessage[ 32 ];
-										formatex( szMessage, charsmax( szMessage ), "%.2f(+%.1f)", speed[id], speed[id] - duckgainspeed[id]);
-										send_hudmessage(i,	szMessage, -1.0 ,0.65,  0, 255, 0, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
+										new szMessage[ 64 ];
+										formatex( szMessage, charsmax( szMessage ), "%s %.2f(-%.1f)^nFOG:%i (%.2f)", FOGTYPE, speed[id], speed[id] - duckgainspeed[id], g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
 									}
 								}
 								else
 								{
-									if ( bhopgainspeed[id] > speed[id] ) 
+									if ( bhopgainspeed[id] > speed[id] ) // 超速减速
 									{
 										new szMessage[ 64 ];
-										formatex( szMessage, charsmax( szMessage ), "Your prestrafe %.2f(-%.1f) is too high(%.01f)", speed[id], bhopgainspeed[id] - speed[id],Pmaxspeed*1.2 );
-										send_hudmessage(i,szMessage, -1.0 ,0.65,  255, 0, 0, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
+										formatex( szMessage, charsmax( szMessage ), "Your Prestrafe %.2f(-%.1f) is too high(%.01f)^nFOG:%i (%.2f)", speed[id], bhopgainspeed[id] - speed[id], 1.2 * Pmaxspeed, g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
 									}
-									else if ( bhopgainspeed[id] < speed[id] ) {
+									else if ( bhopgainspeed[id] < speed[id] ) {	// 超速加速
 										new szMessage[ 64 ];
-										formatex( szMessage, charsmax( szMessage ), "Your prestrafe %.2f(+%.1f) is too high(%.01f)", speed[id], speed[id] - bhopgainspeed[id],Pmaxspeed*1.2);
-										send_hudmessage(i,szMessage, -1.0 ,0.65,  0, 255, 0, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
+										formatex( szMessage, charsmax( szMessage ), "Your Prestrafe %.2f(+%.1f) is too high(%.01f)^nFOG:%i (%.2f)", speed[id], speed[id] - bhopgainspeed[id], 1.2 * Pmaxspeed, g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
 									}
 								}
 							}
