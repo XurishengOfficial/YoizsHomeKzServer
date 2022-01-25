@@ -204,7 +204,7 @@ new bool:g_bHideMe[33];
 new gMaxPlayers;
 new gCvarOn;
 new gCvarImmunity;
-new bool:gOnOff[33] = { true, ... };
+new bool:gOnOff[33] = { true, ... };	//是否开启观战 --关闭后不能看到别人的观战信息和观战人的信息
 //
 
 
@@ -6274,8 +6274,10 @@ public kz_menu(id)
 	//-----
 
 	if(!isMapFound)	formatex(MapInfo, charsmax(MapInfo), "Unknown");
+	new hostName[64];
+	get_cvar_string( "hostname", hostName, charsmax(hostName) );
 	
-	formatex(title, 285, "\r#Yoiz's Home Kz Server ^n\dBased on \yProkreedz V2.31 \d Edited by \yAzuki daisuki~^n\dPresent time %s^nMap \y%s\d & Timeleft \y%d:%02d^n\dType map \y%s", thetime, MapName, tl/60, tl%60, MapInfo);
+	formatex(title, 285, "\r#%s ^n\dBased on \yProkreedz V2.31 \d Edited by \yAzuki daisuki~^n\dPresent time %s^nMap \y%s\d & Timeleft \y%d:%02d^n\dType map \y%s", hostName, thetime, MapName, tl/60, tl%60, MapInfo);
 	// formatex(title, 285, "\d[xiaokz] \r#KZ Server \dVisit \ywww.csxiaokz.com ^n\rQQ群:719383105^n\dBeiJing time \y%s^n\dMap \y%s\d & Timeleft \y%d:%02d^n\dType map \y%s", thetime, MapName, tl / 60, tl % 60, MapInfo);
 	
 	new menu = menu_create(title, "MenuHandler")  
@@ -9112,7 +9114,7 @@ public tskShowSpec()
 				if( pev(dead, pev_iuser2) == alive )	//获取dead的人观察的人是不是alive
 				{
 					// if( !(get_pcvar_num(gCvarImmunity)&&get_user_flags(dead, 0)&FLAG) )
-					if( !(get_pcvar_num(gCvarImmunity)) )
+					if( !(get_pcvar_num(gCvarImmunity) || g_bHideMe[dead]) )
 					{
 						get_user_name(dead, szName, 32);
 						add(szName, 33, "^n", 0);
@@ -9132,7 +9134,7 @@ public tskShowSpec()
 				if( sendTo[i] == true
 				&& gOnOff[i] == true )
 				{
-					set_hudmessage(RED, GREEN, BLUE, 0.75, 0.15, 0, 6.0, UPDATEINTERVAL_SPECLIST + 0.5, 0.0, 0.0, 1);	// channel1
+					set_hudmessage(RED, GREEN, BLUE, 0.75, 0.15, 0, 6.0, UPDATEINTERVAL_SPECLIST + 1.5, 0.0, 0.0, 4);	// channel4
 					if(is_user_alive(i))	// 给被观战的人发送szHud_toAlive
 						show_hudmessage(i, szHud_toAlive);
 					if(!is_user_alive(i))	// 给观战的人发送szHud_toDead
