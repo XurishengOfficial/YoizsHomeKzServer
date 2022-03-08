@@ -75,6 +75,11 @@ public plugin_init()
 	// set_task(600.0, "randomNextMap", _, _, _, "b", _);
 }
 
+public plugin_end() {
+	new mapName[64];
+	get_cvar_string("amx_nextmap", mapName, charsmax(mapName));
+	server_print("[NextMap.amxx] ========== Next Map is %s ==========", mapName);
+}
 public randomNextMap_admin(id) {
 	if(!is_user_admin(id)) return;
 
