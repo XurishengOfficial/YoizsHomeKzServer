@@ -189,6 +189,7 @@ new PRO_PATH[100]
 new NUB_PATH[100]
 new WPN_PATH[100]
 new WEB_URL[64]
+new webTopUrl[64]
 new kz_webtop_url
 
 #define RANKLEN 2
@@ -209,11 +210,10 @@ new bool:gOnOff[33] = { true, ... };	//是否开启观战 --关闭后不能看�
 
 
 // shwo WR
-new const e_DownloadLinks[3][] = 
+new const e_DownloadLinks[2][] = 
 {
 	"https://xtreme-jumps.eu/demos.txt",	//XJ
-	"https://cosy-climbing.net/demoz.txt",	//Cosy
-	"http://ntjump.cn/demos.txt"		//NTjump
+	"https://cosy-climbing.net/demoz.txt"	//Cosy
 }
 
 new kz_wr_diff
@@ -610,6 +610,7 @@ new g_bot_speed = 1;
 new g_authid[32];
 new g_date[64];
 new g_country[128];
+new bool: g_bot_pause = false;
 
 // NUB
 new Array:gc_DemoPlaybot[1];
@@ -686,7 +687,6 @@ public plugin_init()
 	#else
 	// kz_webtop_url = register_cvar("kz_webtop_url", "http://60.205.191.245/amxmodx/kz/")		//My Servers by Perfectslife
 	kz_webtop_url = register_cvar("kz_webtop_url", "")		//Top URL http://....
-	get_pcvar_string(kz_webtop_url, WEB_URL, 63)
 	#endif
 
 	register_clcmd("test1","ReadBestRunFile")
@@ -863,7 +863,7 @@ public plugin_init()
 	// 当没有文件的时候执行更新
 	if(!file_exists(e_LastUpdate))	
 	{
-		UpdateRecords( );
+		UpdateRecords();
 		return;
 	}
 	
@@ -878,7 +878,7 @@ public plugin_init()
 	// 比对日期 每天一更新
 	if( iYear > str_to_num( szDate[ 0 ] ) || iMonth > str_to_num( szDate[ 5 ] ) || iDay > str_to_num( szDate[ 8 ] ) )
 	{
-		UpdateRecords();
+		// UpdateRecords();
 	}
 	#endif
 	
@@ -1847,7 +1847,7 @@ public BotThink( id )
 	static Float:last_check, Float:game_time, nFrame;
 	game_time = get_gametime();
 
-	if( game_time - last_check > 1.0 ) //?帧数时差补偿？
+	if( game_time - last_check > 1.0 ) //?帧数时差补偿？因为帧数问题导致bot丢帧?
 	{
 		if (nFrame < 100)
 			nExttHink = nExttHink - 0.0001
@@ -1862,12 +1862,12 @@ public BotThink( id )
 	{
 		// g_bot_frame++;
 		new i;
-		while (i < g_bot_speed) // 等价于 g_bot_frame += g_bot_speed
+		while (i < g_bot_speed && !g_bot_pause) // 等价于 g_bot_frame += g_bot_speed
 		{
 			g_bot_frame += 1;
 			i++;
 		}
-		if ( g_bot_frame < ArraySize( g_DemoPlaybot[0] ) )
+		if ( g_bot_frame < ArraySize( g_DemoPlaybot[0] ) && g_bot_frame >= 0)
 		{
 			new ArrayData[DemoData], Float:ViewAngles[3];
 			ArrayGetArray(g_DemoPlaybot[0], g_bot_frame, ArrayData);
@@ -2107,7 +2107,7 @@ HudApplyCVars()
 
 public cmdUpdateWRdata(id)
 {
-	if (!is_user_bot(id) && get_playersnum() < 2)
+	if (!is_user_bot(id))
 	{
 		new authid[32]
 		get_user_authid(id, authid,31)
@@ -2221,7 +2221,7 @@ stock force_team_join(id, menu_msgid)
 
 public ExtendTime(id)//延长时间
 {
-	if (! (get_user_flags( id ) & KZ_LEVEL_VIP ))
+	if (! ((get_user_flags( id ) & KZ_LEVEL_VIP ) || is_user_admin(id) ) )
 	{
 		server_print("NOT VIP");
 		ColorChat(id, GREEN,  "%s ^x01Only VIP can addtime!", prefix)
@@ -2989,21 +2989,22 @@ public ReadWeb ( const iSocket)
 	if ( e_UpdatedNR == 2 ) 
 	RecFile = e_Records_CC
 
-	if ( e_UpdatedNR == 3 ) 
-	RecFile = e_Records_CR
+	// if ( e_UpdatedNR == 3 ) 
+	// RecFile = e_Records_CR
 
 	e_UpdatedNR++;
-	while (socket_recv( iSocket, e_Buffer, 25000 )) 
+	e_UpdatedNR %= 2;
+	while (socket_recv( iSocket, e_Buffer, charsmax(e_Buffer) )) 
 	{
 		if( e_Buffer[0] ) 
 		{
-			if( e_Buffer[0] == 'H' && e_Buffer[1] == 'T' ) // Header
-			{
-				new iPos;
-				iPos = contain( e_Buffer, "^r^n^r^n" ) + 4;
-				iPos += contain( e_Buffer[iPos], "^n" ) + 1;
-				formatex( e_Buffer, charsmax( e_Buffer ), e_Buffer[iPos] );
-			}
+			// if( e_Buffer[0] == 'H' && e_Buffer[1] == 'T' ) // Header
+			// {
+			// 	new iPos;
+			// 	iPos = contain( e_Buffer, "^r^n^r^n" ) + 4;
+			// 	iPos += contain( e_Buffer[iPos], "^n" ) + 1;
+			// 	formatex( e_Buffer, charsmax( e_Buffer ), e_Buffer[iPos] );
+			// }
 			new iFile = fopen( RecFile, "at" );
 			fputs( iFile, e_Buffer );
 			fclose( iFile ); 
@@ -3013,6 +3014,7 @@ public ReadWeb ( const iSocket)
 	socket_close( iSocket ); 
 }
 
+//================ #ToDo Mark: socket_send()只能发http包? ================
 public UpdateRecords( ) 
 {
 
@@ -3035,33 +3037,42 @@ public UpdateRecords( )
 	formatex( szTemp, 254, "%04i/%02i/%02i", iYear, iMonth, iDay );
 	fputs( iFile, szTemp );
 	fclose( iFile );
-	//
 	new e_Host[ 96 ], e_Url[ 96 ], e_Socket[ 256 ], iPos, iSocket;
 
-	for( new i; i < 3; i++ ) 
+	for( new i; i < 1; i++ ) 
 	{
-		copy( e_Host, 95, e_DownloadLinks[i][7] );
+		copy( e_Host, 95, e_DownloadLinks[i][8] );
 		iPos = contain( e_Host, "/" );
-
+		server_print("e_Host: %s", e_Host);
 		if( iPos != -1 ) 
 		{
 			copy( e_Url, 95, e_Host[iPos + 1] );
 
 			e_Host[iPos] = 0;
 		}
-	
-		iSocket = socket_open( e_Host, 80, SOCKET_TCP, iPos );
+		server_print("e_Host: %s", e_Host);
+		server_print("e_Url: %s", e_Url);
+
+		//================ Socket ================
+		// e.g 
+		// e_DownloadLinks = http://xtreme-jumps.eu/demos.txt
+		// e_DownloadLinks[i][7] = xtreme-jumps.eu/demos.txt
+		// eHost = xtreme-jumps.eu; 
+		// eUrl = demos.txt
+		// http port 80; https port 443
+		iSocket = socket_open( e_Host, 443, SOCKET_TCP, iPos );
 		if( iPos > 0 )
 		{ 
 			switch(iPos) 
 			{
 				case 1: log_amx("Socket错误(%d) 无法建立 Socket", iPos);
 				case 2: log_amx("Socket错误(%d) 无法解析 %s",iPos, e_Host);
-				case 3: log_amx("Socket错误(%d) 无法连接 %s:80",iPos, e_Host);
+				case 3: log_amx("Socket错误(%d) 无法连接 %s:443",iPos, e_Host);
 			}
 			continue;
 		}
-		formatex( e_Socket, 255, "GET /%s HTTP/1.1^nHost: %s^r^n^r^n", e_Url, e_Host );
+		log_amx("Socket建立连接 %s:443", e_Host);
+		formatex( e_Socket, 255, "GET /%s HTTP/2.0^nHost: %s^r^n^r^n", e_Url, e_Host );
 		socket_send( iSocket, e_Socket, 255 );
 		set_task( 0.25, "ReadWeb", iSocket );
 	}
@@ -6714,10 +6725,11 @@ public AdminMenu(id)
 	menu_additem( menu, "AMXX管理员菜单^n", "1" )
 	menu_additem( menu, "设置地图类型", "2" )
 	menu_additem( menu, "发起地图投票", "3" )
-	menu_additem( menu, "直接更换地图", "4" )
+	menu_additem( menu, "直接更换地图^n", "4" )
 	menu_additem( menu, "连跳板子设定\y(鼠标准星标记)", "5" )
 	menu_additem( menu, "更新最新记录\y(XJ CC NT)^n", "6" )
 	menu_additem( menu, hidespec, "7" )
+	menu_additem(menu, "服务器BOT设置", "8");
 
 	menu_display(id, menu, 0)
 	return PLUGIN_HANDLED 
@@ -6781,8 +6793,29 @@ public AdminMenuHandler (id, menu, item, level, cid)
 			hideme(id)
 			AdminMenu(id)
 		}
+		case 7:
+		{
+			
+		}
 	}
 	return PLUGIN_HANDLED
+}
+
+// 懒狗 不想写了 参考xiaokz Pause_bot
+public botMenu(id) {
+	if( !( (get_user_flags(id) & KZ_ADMIN) || (get_user_flags(id) & KZ_LEVEL) || (get_user_flags(id) & KZ_LEVEL_VIP) ) ) {
+		kz_chat(id, "%L", id, "KZ_NO_ACCESS");
+		return;
+	}
+	new menu = menu_create("\rKreedz Pro Bot Menu\w", "BotMenuHandler");
+	new speedInfo[16];
+	formatex(speedInfo, charsmax(speedInfo), "Speed - X%d", g_bot_speed);
+	menu_additem( menu, "restart", "1" );
+	menu_additem( menu, "pause", "2" );
+	menu_additem( menu, speedInfo, "3" );
+	menu_additem( menu, "restart", "4" );
+	menu_display(id, menu, 0)
+	return;
 }
 
 public hideme(id)
@@ -7405,7 +7438,7 @@ public fwdUse(ent, id)
 			return PLUGIN_HANDLED
 		}
 		
-		if( timer_started[id] && !tphook_user[id && !is_user_bot(id)])	//需要排除BOT 避免BOT的完成影响SR -> 可能导致全0
+		if( timer_started[id] && !tphook_user[id] && !is_user_bot(id) )	//需要排除BOT 避免BOT的完成影响SR -> 可能导致全0
 		{
 			if(get_user_noclip(id))
 				return PLUGIN_HANDLED
@@ -7418,6 +7451,7 @@ public fwdUse(ent, id)
 		}
 		else
 			kz_hud_message(id, "%L", id, "KZ_TIMER_NOT_STARTED")
+		// client_print(0, print_chat, "%d	%d	%d", timer_started[id], !tphook_user[id], !is_user_bot(id));
 	}
 	return HAM_IGNORED
 }
@@ -8166,7 +8200,8 @@ public ProTop_update(id, Float:time)
 						}
 						else
 						{
-							client_cmd(0, "spk kzsound/toprec");
+							// client_cmd(0, "spk kzsound/toprec");
+							client_cmd(0, "spk misc/mod_unstopable");
 						}
 						// ################################################
 						// # 需要修的BUG: 1 BOT计时每次循环后不清空 2 多次按下计时器时不会重置保存的数据 3 暂停无法暂停状态的记录(√)
@@ -8197,7 +8232,8 @@ public ProTop_update(id, Float:time)
 					{
 						ClCmd_UpdateReplay(id, time);
 					}
-					client_cmd(0, "spk kzsound/toprec");
+					// client_cmd(0, "spk kzsound/toprec");
+					client_cmd(0, "spk misc/mod_unstopable");				
 					ColorChat(0, RED,  "^x01%s^x01^x03 %s^x01 %L^x03 1^x01 in ^x03Professional^x01", prefix, name, LANG_PLAYER, "KZ_PLACE");
 				}
 				else // 非SR
@@ -8848,7 +8884,9 @@ public ProTop_show(id)
 	fclose( fh )
 	// 显示内容时 url中内容是客户本地的html文件
 	// 显示文件时 url中显示的是服务器本地的html文件
-	show_motd( id, "http://121.4.105.22:80/pro_top.html", MotdName );
+	get_pcvar_string(kz_webtop_url, webTopUrl, charsmax(webTopUrl));
+	format(webTopUrl, charsmax(webTopUrl), "%s/pro_top.html", webTopUrl);	//"http://121.4.105.22:80/pro_top.html"
+	show_motd( id, webTopUrl, MotdName );
 
 	return PLUGIN_HANDLED
 }
@@ -8906,8 +8944,10 @@ public NoobTop_show(id)
 	fclose( fh )
 	new NUB_PATHs[1001]
 	formatex(NUB_PATHs, 1000, "<html><head><meta http-equiv=^"Refresh^" content=^"0;url=%s/nub_top.html^"></head><body><p>LOADING...</p></body></html>",WEB_URL)
-	show_motd( id, "http://121.4.105.22:80/nub_top.html", MotdName )
-
+	get_pcvar_string(kz_webtop_url, webTopUrl, charsmax(webTopUrl));
+	format(webTopUrl, charsmax(webTopUrl), "%s/nub_top.html", webTopUrl);	//"http://121.4.105.22:80/pro_top.html"
+	// show_motd( id, "http://121.4.105.22:80/nub_top.html", MotdName )
+	show_motd( id, webTopUrl, MotdName );
 	return PLUGIN_HANDLED
 }
 

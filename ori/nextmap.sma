@@ -189,6 +189,7 @@ readMapCycle2(szFileName[], szNext[], iNext) {
 				if (!isalnum(szBuffer[0]) || !ValidMap(szBuffer)) continue
 				++g_mapNum;
 			}
+			idx = 0; // 首次结束后 将光标重置到文件头
 		}
 		new nextRandomIndex = random_num(1, g_mapNum);
 		new actualIdx = 0;
