@@ -3038,6 +3038,7 @@ public UpdateRecords( )
 	fputs( iFile, szTemp );
 	fclose( iFile );
 	new e_Host[ 96 ], e_Url[ 96 ], e_Socket[ 256 ], iPos, iSocket;
+	new e_Port = 80;
 
 	for( new i; i < 1; i++ ) 
 	{
@@ -3060,19 +3061,19 @@ public UpdateRecords( )
 		// eHost = xtreme-jumps.eu; 
 		// eUrl = demos.txt
 		// http port 80; https port 443
-		iSocket = socket_open( e_Host, 443, SOCKET_TCP, iPos );
+		iSocket = socket_open( e_Host, e_Port, SOCKET_TCP, iPos );
 		if( iPos > 0 )
 		{ 
 			switch(iPos) 
 			{
 				case 1: log_amx("Socket错误(%d) 无法建立 Socket", iPos);
 				case 2: log_amx("Socket错误(%d) 无法解析 %s",iPos, e_Host);
-				case 3: log_amx("Socket错误(%d) 无法连接 %s:443",iPos, e_Host);
+				case 3: log_amx("Socket错误(%d) 无法连接 %s:%d",iPos, e_Host, e_Port);
 			}
 			continue;
 		}
-		log_amx("Socket建立连接 %s:443", e_Host);
-		formatex( e_Socket, 255, "GET /%s HTTP/2.0^nHost: %s^r^n^r^n", e_Url, e_Host );
+		log_amx("Socket建立连接 %s:%d", e_Host, e_Port);
+		formatex( e_Socket, 255, "GET /%s HTTP/1.1^nHost: %s^r^n^r^n", e_Url, e_Host );
 		socket_send( iSocket, e_Socket, 255 );
 		set_task( 0.25, "ReadWeb", iSocket );
 	}

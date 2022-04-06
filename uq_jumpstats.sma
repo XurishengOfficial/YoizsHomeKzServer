@@ -1276,7 +1276,7 @@ public tskFps(id)
 	if( leg_settings)
 	{
 		id-=434490;
-		client_cmd(id, "developer 0;fps_max 101;cl_forwardspeed 400;cl_sidespeed 400;cl_backspeed 400");
+		client_cmd(id, "developer 0;fps_max 99.5;cl_forwardspeed 400;cl_sidespeed 400;cl_backspeed 400");
 	}
 }
 public server_frame()

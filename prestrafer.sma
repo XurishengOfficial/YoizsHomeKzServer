@@ -61,12 +61,11 @@ public tooglePre(id)
 
 public fwdPreThink( id )
 {
-	// if(is_user_bot(id))
-	// 	return FMRES_IGNORED;
+	if(is_user_bot(id))
+		return FMRES_IGNORED;
 
 	if(g_userConnected[id]==true)
 	{	
-		
 		new tmpTeam[33],dead_flag;	
 		get_user_team(id,tmpTeam,32);
 		dead_flag=pev(id, pev_deadflag);

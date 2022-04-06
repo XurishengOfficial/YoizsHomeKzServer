@@ -33,8 +33,10 @@ public client_disconnect(id)
 
 public activateMultiJumps(id) {
     // 普通玩家使用会暂停计时器
-    if(!is_user_admin(id))
+    if(!is_user_admin(id)) {
         client_cmd(id, ".noclip");
+        return;
+    }
     is_mj_activate[id] = !is_mj_activate[id];
     ColorChat(id, GREEN, is_mj_activate[id]? "[Holo]^x03二段跳已开启!" : "[Holo]^x03二段跳已关闭!");
 }
@@ -52,6 +54,7 @@ public client_PreThink(id)
         secondPress[id] = get_gametime();
         new float: timeInterval = secondPress[id] - firstPress[id];
         // client_print(id, print_chat, "secondPress at %f, timeinterval is %f", secondPress[id], timeInterval);
+        // 二段跳内置CD 通过设置CD可以防止滚轮滚太多
         if(jumpnum[id] < get_cvar_num("amx_maxjumps") && timeInterval > get_cvar_float("amx_multijumpcd") && is_mj_activate[id])
         {
             dojump[id] = true
