@@ -593,33 +593,45 @@ new g_MaxCheckPointIndex[33];
 new unDoCheckPoint[33][CheckPointData];
 
 //======================= #MARK: BOT & RECORD================================
+new Float:nExttHink = 0.009;
+new DATADIR[128];
+
 // PRO
 new Array:g_DemoPlaybot[1];
 new Array:g_DemoReplay[33];
 new Float:g_ReplayBestRunTime;
 new Float:g_bestruntime;
+new Float:g_bot_cur_compensated_time = 0.0;
+new Float:g_bot_sum_compensated_time = 0.0;
+new Float:g_bot_fastforwardtime = 0.0;
+
+new bool:g_fileRead;
+new bool:g_bot_pause = false;
+
 new g_ReplayName[32];
 new g_bBestTimer[14];
-new bool:g_fileRead;
 new g_bot_enable;
 new g_bot_frame;
 new g_bot_id;
-new Float:nExttHink = 0.009;
-new DATADIR[128];
 new g_bot_speed = 1;
 new g_authid[32];
 new g_date[64];
 new g_country[128];
-new bool: g_bot_pause = false;
 
 // NUB
 new Array:gc_DemoPlaybot[1];
 new Array:gc_DemoReplay[33];
 new Float:gc_ReplayBestRunTime;
 new Float:gc_bestruntime;
+new Float:gc_bot_cur_compensated_time = 0.0;
+new Float:gc_bot_sum_compensated_time = 0.0;
+new Float:gc_bot_fastforwardtime = 0.0;
+
+new bool:gc_fileRead;
+new bool:gc_bot_pause = false;
+
 new gc_ReplayName[32];
 new gc_bBestTimer[14];
-new bool:gc_fileRead;
 new gc_bot_enable;
 new gc_bot_frame;
 new gc_bot_id;
@@ -627,6 +639,7 @@ new gc_bot_speed = 1;
 new gc_authid[32];
 new gc_date[64];
 new gc_country[128];
+
 
 new g_szMapName[32];
 
@@ -776,10 +789,21 @@ public plugin_init()
 	kz_register_saycmd("top", "top15menu",0)
 	kz_register_saycmd("top100", "top15menu",0)
 	kz_register_saycmd("tp", "GoCheck",0)
+
 	kz_register_saycmd("usp", "cmdUsp", 0)
 	kz_register_saycmd("version", "Version", 0)
 	kz_register_saycmd("weapons", "weapons", 0)
 	kz_register_saycmd("guns", "weapons", 0)	
+	kz_register_saycmd("kzbot", "ClCmd_ReplayMenu", 0)	
+	new weaponNames[8][] = 
+	{
+		"scout", "p90", "famas", "sg552",
+		"m4a1", "m249", "ak47", "awp"
+	}
+	for(new i = 0; i < 8; ++i) {
+		kz_register_saycmd(weaponNames[i], "weapons", 0)		
+	}
+
 	kz_register_saycmd("winvis", "cmdWaterInvisible", 0)
 	// kz_register_saycmd("server", "cmdServerMenu", 0)
 	
@@ -1262,7 +1286,9 @@ public plugin_cfg()
 	// ----------------------------
 }
 
-// ==================#MARK: BOT & RECORDS==================#
+//============================================================================
+//						BOT & RECORDS
+//============================================================================
 public Ham_PlayerPreThink(id)
 {
 	if (is_user_alive(id))
@@ -1651,8 +1677,7 @@ public bot_restart()
 	{
 		if(!g_bot_id)
      		g_bot_id = Create_Bot(); // Создает бота с id
-		else
-			Start_Bot();
+		Start_Bot();
 	}
 }
 
@@ -1661,11 +1686,8 @@ public bot_restart_c()
 	if (gc_fileRead)
 	{
 		if (!gc_bot_id)
-		{
 			gc_bot_id = Create_Bot_c();
-		}
-		else
-			Start_Bot_c();
+		Start_Bot_c();
 	}
 	return 0;
 }
@@ -1680,7 +1702,7 @@ Create_Bot()
 	{
 		set_user_info(id, "rate", "10000");
 		set_user_info(id, "cl_updaterate", "60");
-		set_user_info(id, "cl_cmdrate", "101");
+		set_user_info(id, "cl_cmdrate", "99.5");
 		set_user_info(id, "cl_lw", "1");
 		set_user_info(id, "cl_lc", "1");
 		set_user_info(id, "cl_dlmax", "512");
@@ -1722,7 +1744,7 @@ Create_Bot_c()
 	{
 		set_user_info(id, "rate", "10000");
 		set_user_info(id, "cl_updaterate", "60");
-		set_user_info(id, "cl_cmdrate", "101");
+		set_user_info(id, "cl_cmdrate", "99.5");
 		set_user_info(id, "cl_lw", "1");
 		set_user_info(id, "cl_lc", "1");
 		set_user_info(id, "cl_dlmax", "512");
@@ -1756,8 +1778,8 @@ Create_Bot_c()
 }
 Start_Bot()
 {
-	g_bot_frame = 0;
-	start_climb_bot(g_bot_id);
+	g_bot_frame = 0;	// 重启 or 初始化 bot frame
+	start_climb_bot(g_bot_id);	// 重置 bot timer
 	return 0;
 }
 
@@ -1768,13 +1790,67 @@ Start_Bot_c()
 	return 0;
 }
 
+public Pause_bot()
+{
+	if (!IsPaused[g_bot_id])	// 暂停BOT
+	{
+		if (!timer_started[g_bot_id]) return;
+		g_pausetime[g_bot_id] = get_gametime() - timer_time[g_bot_id];
+		g_bot_sum_compensated_time += (get_gametime() - g_bot_fastforwardtime) * (g_bot_speed - 1);	// 暂停bot时需要立刻补偿加速/减速的时间
+		timer_time[g_bot_id] = 0.0;
+		IsPaused[g_bot_id] = true;
+		g_bot_pause = true;
+		set_pev(g_bot_id, 84, pev(g_bot_id, 84) | 4096);
+		pev(g_bot_id, 118, PauseOrigin[g_bot_id]);
+	}
+	else	// 继续BOT
+	{
+		if (timer_started[g_bot_id])
+		{
+			timer_time[g_bot_id] = get_gametime() - g_pausetime[g_bot_id];
+			g_bot_fastforwardtime = get_gametime();	// 暂停时已补偿 需要将快进时间调整到继续running的时候
+		}
+		IsPaused[g_bot_id] = false;
+		g_bot_pause = false;
+		set_pev(g_bot_id, 84, pev(g_bot_id, 84) & -4097);
+	}
+	return;
+}
+
+public Pause_bot_c()
+{
+	if (!IsPaused[gc_bot_id])	// 暂停BOT
+	{
+		if (!timer_started[gc_bot_id]) return;
+		g_pausetime[gc_bot_id] = get_gametime() - timer_time[gc_bot_id];
+		gc_bot_sum_compensated_time += (get_gametime() - gc_bot_fastforwardtime) * (gc_bot_speed - 1);	// 暂停bot时需要立刻补偿加速/减速的时间
+		timer_time[gc_bot_id] = 0.0;
+		IsPaused[gc_bot_id] = true;
+		gc_bot_pause = true;
+		set_pev(gc_bot_id, 84, pev(gc_bot_id, 84) | 4096);
+		pev(gc_bot_id, 118, PauseOrigin[gc_bot_id]);
+	}
+	else	// 继续BOT
+	{
+		if (timer_started[gc_bot_id])
+		{
+			timer_time[gc_bot_id] = get_gametime() - g_pausetime[gc_bot_id];
+			gc_bot_fastforwardtime = get_gametime();	// 暂停时已补偿 需要将快进时间调整到继续running的时候
+		}
+		IsPaused[gc_bot_id] = false;
+		gc_bot_pause = false;
+		set_pev(gc_bot_id, 84, pev(gc_bot_id, 84) & -4097);
+	}
+	return;
+}
+
 Remove_Bot()
 {
 	server_cmd("kick #%d", get_user_userid(g_bot_id))
-	//destroy_bot_icon(g_bot_id)
 	g_bot_id = 0;
 	g_bot_enable = 0;
 	g_bot_frame = 0;
+	g_bot_pause = false;
 	ArrayClear(g_DemoPlaybot[0]);
 }
 
@@ -1784,18 +1860,26 @@ Remove_Bot_c()
 	gc_bot_id = 0;
 	gc_bot_enable = 0;
 	gc_bot_frame = 0;
+	gc_bot_pause = false;
 	ArrayClear(gc_DemoPlaybot[0]);
 	return 0;
 }
 
+// 控制BOT的计时器相关
 start_climb_bot(id)
 {
 	set_pev(g_bot_id, pev_gravity, 1.0);  // pev_gravity
 	set_pev(g_bot_id, pev_movetype, MOVETYPE_WALK);   // pev_movetype
 	reset_checkpoints(id);
-	IsPaused[g_bot_id] = false;
-	timer_started[g_bot_id] = true;
+	
+	IsPaused[g_bot_id] = false;		// IsPaused[]控制 | *Paused*
+	timer_started[g_bot_id] = true;	// timer_started[]控制计时器是否running 
+	g_bot_pause = false;
+
 	timer_time[g_bot_id] = get_gametime();
+	g_bot_fastforwardtime = timer_time[g_bot_id];
+	g_bot_cur_compensated_time = 0.0;	// 当前需要补偿的时间
+	g_bot_sum_compensated_time = 0.0;	// 之前累计的需要补偿的时间
 	return 0;
 }
 
@@ -1804,9 +1888,15 @@ start_climb_bot_c(id)
 	set_pev(gc_bot_id, pev_gravity, 1.0);  // pev_gravity
 	set_pev(gc_bot_id, pev_movetype, MOVETYPE_WALK);   // pev_movetype
 	reset_checkpoints(id);
+
 	IsPaused[gc_bot_id] = false;
 	timer_started[gc_bot_id] = true;
+	gc_bot_pause = false;
+
 	timer_time[gc_bot_id] = get_gametime();
+	gc_bot_fastforwardtime = timer_time[gc_bot_id];
+	gc_bot_cur_compensated_time = 0.0;	// 当前需要补偿的时间
+	gc_bot_sum_compensated_time = 0.0;	// 之前累计的需要补偿的时间
 	return 0;
 }
 
@@ -1862,7 +1952,7 @@ public BotThink( id )
 	{
 		// g_bot_frame++;
 		new i;
-		while (i < g_bot_speed && !g_bot_pause) // 等价于 g_bot_frame += g_bot_speed
+		while (i < g_bot_speed && !g_bot_pause) // 通过g_bot_pause控制 g_bot_frame是否增加(不增加则暂停)
 		{
 			g_bot_frame += 1;
 			i++;
@@ -1906,8 +1996,10 @@ public BotThink( id )
 			if( pev( id, pev_gaitsequence ) == 4 && ~pev( id, pev_flags ) & FL_ONGROUND )
 				set_pev( id, pev_gaitsequence, 6 );
 
-			if(nFrame == ArraySize( g_DemoPlaybot[0] ) - 1)
-				Start_Bot();
+			// 疑似没用 记录时间小于100帧?
+			// if(nFrame == ArraySize( g_DemoPlaybot[0] ) - 1)
+			// 	Start_Bot();
+			// }
 
 		} else  {
 			start_climb_bot(g_bot_id);
@@ -1937,7 +2029,7 @@ public BotThink_c(id)
 	if(gc_bot_enable == 1 && gc_bot_id)
 	{
 		new i;
-		while (i < gc_bot_speed) // 确定bot的播放速度 默认 1
+		while (i < gc_bot_speed && !gc_bot_pause) // 通过gc_bot_pause控制 g_bot_frame是否增加(不增加则暂停)
 		{
 			gc_bot_frame += 1;
 			i++;
@@ -1995,6 +2087,7 @@ public BotThink_c(id)
 	return 0;
 }
 
+//================================== Game Play Description ==========================
 public fnUpdateGameName()
 { 
 	// static id,num;id++;num=0;
@@ -3484,15 +3577,16 @@ public timer_task()
 {
 	if ( get_pcvar_num(kz_show_timer) > 0 )
 	{
+		//Alive & Dead均不包含BOT
 		new Alive[32], Dead[32], alivePlayers, deadPlayers;
 		get_players(Alive, alivePlayers, "ach")
 		get_players(Dead, deadPlayers, "bch")
-			
+		
+		// alive player: show his own timer
 		for(new i=0;i<alivePlayers;i++)
 		{
 			new output[128];
 			new Float:kreedztime, imin, Float:isec 
-			
 			kreedztime = get_gametime() - (IsPaused[Alive[i]] ? get_gametime() - g_pausetime[Alive[i]] : timer_time[Alive[i]])
 			imin = floatround(kreedztime , floatround_floor)/60
 			isec = kreedztime - (60*imin) + 0.02
@@ -3569,20 +3663,35 @@ public timer_task()
 			message_end( )
 		}
 		
+		// dead player: show spectating one's timer
 		for(new i=0;i<deadPlayers;i++)
 		{
 			new Float:kreedztime, imin, Float:isec 
 			new specmode = pev(Dead[i], pev_iuser1)
 			if(specmode == 2 || specmode == 4)
 			{
-				new target = pev(Dead[i], pev_iuser2)
+				new target = pev(Dead[i], pev_iuser2)	// 获取被观战玩家id 随后获取其timer并显示在观战者界面
+
 				if(target != Dead[i])
 					if(is_user_alive(target) && timer_started[target])
 					{
-						new name[32];
-						get_user_name (target, name, 31)
-
+						// 如何补偿BOT加速?
 						kreedztime = get_gametime() - (IsPaused[target] ? get_gametime() - g_pausetime[target] : timer_time[target])
+						if(target && target == g_bot_id) {
+							// 计算当前时段的时间补偿;
+							g_bot_cur_compensated_time = g_bot_pause ? 0.0 : (get_gametime() - g_bot_fastforwardtime) * (g_bot_speed - 1);
+
+							// kreedztime是一个临时变量 仅用于展示最终timer结果 所以计算也需要计算到最终结果
+							// 故kreedztime首先补偿本时段前累计的时间差
+							kreedztime += g_bot_sum_compensated_time;	
+							kreedztime += g_bot_cur_compensated_time;
+						}
+						else if(target && target == gc_bot_id) {
+							
+							gc_bot_cur_compensated_time = gc_bot_pause ? 0.0 : (get_gametime() - gc_bot_fastforwardtime) * (gc_bot_speed - 1);
+							kreedztime += gc_bot_sum_compensated_time;	
+							kreedztime += gc_bot_cur_compensated_time;
+						}
 						imin = floatround(kreedztime , floatround_floor)/60
 						isec = kreedztime - (60*imin) + 0.02
 					
@@ -4559,7 +4668,7 @@ public detect_cheat(id,reason[])
 }
  
 // =================================================================================================
-// Cmds
+// 								Check Points & Go Check
 // =================================================================================================
 
 public CheckPoint(id)
@@ -4850,8 +4959,6 @@ public Stuck(id)
 	return PLUGIN_HANDLED;
 }
  
-// =================================================================================================
-
 // 清除存点数组并初始化相关参数
 public reset_checkpoints_array(id) {
 	ArrayClear(g_CheckPointArray[id]);
@@ -4925,7 +5032,10 @@ public UndoGoCheck(id) {
 	set_pev(id, pev_v_angle, unDoCheckPoint[id][flVAngle]);
 	return;
 }
-//===== Invis =======
+
+//============================================================================
+//						Invis Menu
+//============================================================================
 
 public cmdInvisible(id)
 {
@@ -6712,6 +6822,9 @@ public JumpMenuHandler(id , menu, item)
 	return PLUGIN_HANDLED
 }
 
+//============================================================================
+//						Admin Menu
+//============================================================================
 public AdminMenu(id)
 {
 	if( !( (get_user_flags(id) & KZ_ADMIN) || (get_user_flags(id) & KZ_LEVEL) || (get_user_flags(id) & KZ_LEVEL_VIP) ) ) {
@@ -6730,7 +6843,7 @@ public AdminMenu(id)
 	menu_additem( menu, "连跳板子设定\y(鼠标准星标记)", "5" )
 	menu_additem( menu, "更新最新记录\y(XJ CC NT)^n", "6" )
 	menu_additem( menu, hidespec, "7" )
-	menu_additem(menu, "服务器BOT设置", "8");
+	menu_additem( menu, "服务器BOT设置", "8");
 
 	menu_display(id, menu, 0)
 	return PLUGIN_HANDLED 
@@ -6796,29 +6909,154 @@ public AdminMenuHandler (id, menu, item, level, cid)
 		}
 		case 7:
 		{
-			
+			ClCmd_ReplayMenu(id);
 		}
 	}
 	return PLUGIN_HANDLED
 }
 
 // 懒狗 不想写了 参考xiaokz Pause_bot
-public botMenu(id) {
+//============================================================================
+//						Pro Bot Menu
+//============================================================================
+public ClCmd_ReplayMenu(id) {
 	if( !( (get_user_flags(id) & KZ_ADMIN) || (get_user_flags(id) & KZ_LEVEL) || (get_user_flags(id) & KZ_LEVEL_VIP) ) ) {
 		kz_chat(id, "%L", id, "KZ_NO_ACCESS");
 		return;
 	}
-	new menu = menu_create("\rKreedz Pro Bot Menu\w", "BotMenuHandler");
-	new speedInfo[16];
-	formatex(speedInfo, charsmax(speedInfo), "Speed - X%d", g_bot_speed);
-	menu_additem( menu, "restart", "1" );
-	menu_additem( menu, "pause", "2" );
-	menu_additem( menu, speedInfo, "3" );
-	menu_additem( menu, "restart", "4" );
+
+	new szTimer[14];
+	new title[256];
+	new speedInfo[32];
+	new launchInfo[16];
+	new kickBotInfo[64];
+	StringTimer(g_ReplayBestRunTime, szTimer, charsmax(szTimer));
+	formatex(title, charsmax(title), "\r#Kreedz Server \w[\yPRO\w] \rRecord Bot Menu^n\dCode Edited by \rAzuki daisuki~^n^n\dMap \y%s^n\d[\yPRO\d] Time \y%s^n\d[\yPRO\d] by \y%s", MapName, szTimer, g_ReplayName);
+	formatex(launchInfo, charsmax(launchInfo), g_bot_pause? "Continue" : "Pause");
+	formatex(speedInfo, charsmax(speedInfo), "Play Speed - [\rx%d\w]", g_bot_speed);
+	formatex(kickBotInfo, charsmax(kickBotInfo), "Kick BOT \d[ \r[PRO]%s\d ]^n^n", g_ReplayName);
+
+	new menu = menu_create(title, "ClCmd_ReplayMenuHandler");
+	menu_additem( menu, "Restart", 				"1" );
+	menu_additem( menu, launchInfo, 			"2" );
+	menu_additem( menu, speedInfo, 				"3" );
+	menu_additem( menu, kickBotInfo,			"4" );
+	menu_additem( menu, "GO \r[Nub] BOT Menu",	"5" );
 	menu_display(id, menu, 0)
 	return;
 }
 
+public ClCmd_ReplayMenuHandler(id, menu, item) {
+	switch (item)
+	{
+		case 0:	//RESTART
+		{
+			if(g_bot_id) bot_restart();
+			else ReadBestRunFile();
+			ClCmd_ReplayMenu(id);
+		}
+		case 1:	//PLAY
+		{
+			if (g_bot_enable && g_bot_id)
+			{
+				Pause_bot();
+			}
+			ClCmd_ReplayMenu(id);
+		}
+		case 2:	// PLAY SPEED
+		{
+			if(g_bot_speed == 16) g_bot_speed = 1;
+			else g_bot_speed *= 2;
+			g_bot_fastforwardtime = get_gametime();
+			if(!g_bot_pause) g_bot_sum_compensated_time += g_bot_cur_compensated_time;	// 播放速度发生变化 则立刻累计本时段内时间差
+			ClCmd_ReplayMenu(id);
+		}
+		case 3:	//KICK BOT
+		{
+			Remove_Bot();
+			ClCmd_ReplayMenu(id);
+		}
+		case 4:	//GO [NUB]BOT MENU
+		{
+			ClCmd_ReplayMenu_c(id);
+		}
+		default:
+		{
+		}
+	}
+	return;
+}
+
+//============================================================================
+//						Nub Bot Menu
+//============================================================================
+public ClCmd_ReplayMenu_c(id) {
+	if( !( (get_user_flags(id) & KZ_ADMIN) || (get_user_flags(id) & KZ_LEVEL) || (get_user_flags(id) & KZ_LEVEL_VIP) ) ) {
+		kz_chat(id, "%L", id, "KZ_NO_ACCESS");
+		return;
+	}
+	
+	new szTimer[14];
+	new title[256];
+	new speedInfo[32];
+	new launchInfo[16];
+	new kickBotInfo[64];
+	StringTimer(gc_ReplayBestRunTime, szTimer, charsmax(szTimer));
+	formatex(title, charsmax(title), "\r#Kreedz Server \w[\yNUB\w] \rRecord Bot Menu^n\dCode Edited by \rAzuki daisuki~^n^n\dMap \y%s^n\d[\yNUB\d] Time \y%s^n\d[\yNUB\d] by \y%s", MapName, szTimer, gc_ReplayName);
+	formatex(launchInfo, charsmax(launchInfo), gc_bot_pause? "Continue" : "Pause");
+	formatex(speedInfo, charsmax(speedInfo), "Play Speed - [\rx%d\w]", gc_bot_speed);
+	formatex(kickBotInfo, charsmax(kickBotInfo), "Kick BOT \d[ \r[NUB]%s\d ]^n^n", gc_ReplayName);
+
+	new menu = menu_create(title, "ClCmd_ReplayMenuHandler_c");
+	menu_additem( menu, "Restart", 				"1" );
+	menu_additem( menu, launchInfo, 			"2" );
+	menu_additem( menu, speedInfo, 				"3" );
+	menu_additem( menu, kickBotInfo,			"4" );
+	menu_additem( menu, "GO \r[Pro] BOT Menu",	"5" );
+	menu_display(id, menu, 0)
+	return;
+}
+
+public ClCmd_ReplayMenuHandler_c(id, menu, item) {
+	switch (item)
+	{
+		case 0:	//RESTART
+		{
+			if(gc_bot_id) bot_restart_c();
+			else ReadBestRunFile_c();
+			ClCmd_ReplayMenu_c(id);
+		}
+		case 1:	//PLAY
+		{
+			if (gc_bot_enable && gc_bot_id)
+			{
+				Pause_bot_c();
+			}
+			ClCmd_ReplayMenu_c(id);
+		}
+		case 2:	// PLAY SPEED
+		{
+			if(gc_bot_speed == 16) gc_bot_speed = 1;
+			else gc_bot_speed *= 2;
+			gc_bot_fastforwardtime = get_gametime();
+			if(!gc_bot_pause) gc_bot_sum_compensated_time += gc_bot_cur_compensated_time;	// 播放速度发生变化 则立刻累计本时段内时间差; 暂停时不用补偿
+			ClCmd_ReplayMenu_c(id);
+		}
+		case 3:	//KICK BOT
+		{
+			Remove_Bot_c();
+			ClCmd_ReplayMenu_c(id);
+		}
+		case 4:	//GO [Pro]BOT MENU
+		{
+			ClCmd_ReplayMenu(id);
+		}
+		default:
+		{
+		}
+	}
+	return;
+}
 public hideme(id)
 {
 	if (!(get_user_flags(id) & KZ_LEVEL))
