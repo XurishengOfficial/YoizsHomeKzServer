@@ -35,6 +35,8 @@ new Float:g_flSpeed[33];
 // new Float:g_flSpeedPrev[33];
 new Float:g_flGroundTouchSpeed[33];
 
+new pre_hud_channel = 1;
+
 public plugin_init() {
 	register_plugin(PLUGIN, VERSION, AUTHOR);
 	register_forward( FM_PlayerPreThink,	"fwdPreThink",	0 );
@@ -202,7 +204,7 @@ public fwdPreThink( id )
 							preladderspeed[id] = speed[id]
 							new szMessage[ 32 ];
 							formatex( szMessage, charsmax( szMessage ), "%.2f", speed[id] );
-							send_hudmessage(i,szMessage, -1.0 ,0.65,  0, 100, 255, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
+							send_hudmessage(i,szMessage, -1.0 ,0.65,  0, 100, 255, 255 , 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0)
 						}
 					}
 				}
@@ -238,58 +240,85 @@ public fwdPreThink( id )
 						{
 							if(bhop_num[id] > 0) 
 							{
-								preduckspeed[id] = speed[id]
-								if(Pmaxspeed * 1.2 > speed[id]) // 未超速
+								preduckspeed[id] = speed[id];
+								if ( floatround(preladderspeed[id]) > 20) 
 								{
-									if ( floatround(preladderspeed[id]) > 20) 
-									{
-										bhopgainspeed[id] = preladderspeed[id];
-										preladderspeed[id] = 0.0;
-									}
-									else if ( floatround(prebhopspeed[id]) > 100) 
-									{
-										bhopgainspeed[id] = prebhopspeed[id];
-										prebhopspeed[id] = 0.0;
-									}
+									bhopgainspeed[id] = preladderspeed[id];
+									preladderspeed[id] = 0.0;
+								}
+								else if ( floatround(prebhopspeed[id]) > 100) 
+								{
+									bhopgainspeed[id] = prebhopspeed[id];
+									prebhopspeed[id] = 0.0;
+								}
+								if(Pmaxspeed * 1.2 > speed[id])	// 未超速
+								{
+									
 									if ( bhopgainspeed[id] > speed[id] ) // 起跳后减速
 									{
 										new szMessage[ 64 ];
-										if (8 <= g_iFramesOnGround[id])	// LJ走地速...等FOG>=8的情况
+										if (8 <= g_iFramesOnGround[id])	// FOG过高 过滤
 										{
 											formatex( szMessage, charsmax( szMessage ), "%.2f", speed[id]);
-											send_hudmessage(i, szMessage, -1.0 ,0.65, 0, 100, 255, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, 0, 100, 255, 255 , 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
 										}
 										else
 										{
 											formatex( szMessage, charsmax( szMessage ), "%s %.2f(-%.1f)^nFOG:%i (%.2f)", FOGTYPE, speed[id], bhopgainspeed[id] - speed[id], g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
-											send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
 										}
 										
 									}
-									else if ( bhopgainspeed[id] == 0.0 || bhopgainspeed[id] == speed[id]) {
+									else if ( bhopgainspeed[id] == 0.0 || bhopgainspeed[id] == speed[id]) // 本次弹跳不加也不减 或者原地蹦跶
+									{ 
 										new szMessage[ 64 ];
 										formatex( szMessage, charsmax( szMessage ), "%.2f", speed[id] );
-										send_hudmessage(i,szMessage, -1.0 ,0.65,  0, 100, 255, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
+										send_hudmessage(i,szMessage, -1.0 ,0.65,  0, 100, 255, 255 , 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0)
 									}
-									else if ( bhopgainspeed[id] < speed[id] ) {	// 起跳后加速
+									else if ( bhopgainspeed[id] < speed[id] ) // 起跳后加速
+									{	
 										new szMessage[ 64 ];
-										formatex( szMessage, charsmax( szMessage ), "%s %.2f(+%.1f)^nFOG:%i (%.2f)", FOGTYPE, speed[id], speed[id] - bhopgainspeed[id], g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
-										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
+										if (8 <= g_iFramesOnGround[id])
+										{
+											formatex( szMessage, charsmax( szMessage ), "%.2f", speed[id]);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, 0, 100, 255, 255 , 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
+										}
+										else
+										{
+											formatex( szMessage, charsmax( szMessage ), "%s %.2f(+%.1f)^nFOG:%i (%.2f)", FOGTYPE, speed[id], speed[id] - bhopgainspeed[id], g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
+										}	
 									}
 								}
-								else // 超速
-								{
-									if ( bhopgainspeed[id] > speed[id] ) 
+								else	//超速
+								{	
+									if ( bhopgainspeed[id] > speed[id] )	//超速减速
 									{
 										new szMessage[ 64 ];
-										formatex( szMessage, charsmax( szMessage ), "Your Prestrafe %.2f(-%.1f) is too high(%.01f)^nFOG:%i (%.2f)", speed[id], bhopgainspeed[id] - speed[id], 1.2 * Pmaxspeed, g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
-										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
+										if (8 <= g_iFramesOnGround[id])
+										{
+											formatex( szMessage, charsmax( szMessage ), "%.2f", speed[id]);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, 0, 100, 255, 255 , 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
+										}
+										else
+										{
+											formatex( szMessage, charsmax( szMessage ), "Your Prestrafe %.2f(-%.1f) is too high(%.01f)^nFOG:%i (%.2f)", speed[id], bhopgainspeed[id] - speed[id], 1.2 * Pmaxspeed, g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
+										}
 									}
-									else if ( bhopgainspeed[id] < speed[id] ) {
+									else if ( bhopgainspeed[id] < speed[id] )	// 超速加速
+									{
 										new szMessage[ 64 ];
-										formatex( szMessage, charsmax( szMessage ), "Your Prestrafe %.2f(+%.1f) is too high(%.01f)^nFOG:%i (%.2f)", speed[id], speed[id] - bhopgainspeed[id], 1.2 * Pmaxspeed, g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
-										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
-
+										if (8 <= g_iFramesOnGround[id])
+										{
+											formatex( szMessage, charsmax( szMessage ), "%.2f", speed[id]);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, 0, 100, 255, 255 , 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
+										}
+										else
+										{
+											formatex( szMessage, charsmax( szMessage ), "Your Prestrafe %.2f(+%.1f) is too high(%.01f)^nFOG:%i (%.2f)", speed[id], speed[id] - bhopgainspeed[id], 1.2 * Pmaxspeed, g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
+										}
 									}
 								}
 							}
@@ -304,42 +333,63 @@ public fwdPreThink( id )
 			}
 			
 			// 多次小跳显示地速
-			if( button & IN_DUCK && !(oldbuttons &IN_DUCK) && flags & FL_ONGROUND  && !is_user_duck[id] )
+			if( button & IN_DUCK && !(oldbuttons & IN_DUCK) && flags & FL_ONGROUND  && !is_user_duck[id] )
 			{	
 				for( new i = 1; i < max_players; i++ )
 				{
-					if( (i == id || is_spec_user[i]))
+					if( (i == id || is_spec_user[i]))	//#MARK 可能需要改
 					{
 						if(plrPre[i])
 						{
-							if(ddnum[id] > 0) {
+							if(ddnum[id] > 0) 
+							{
+								prebhopspeed[id] = speed[id]
+								if ( floatround(preladderspeed[id]) > 20) 
+								{
+									bhopgainspeed[id] = preladderspeed[id];										
+									preladderspeed[id] = 0.0;
+								}
+								else if ( floatround(preduckspeed[id]) > 100) 
+								{
+									duckgainspeed[id] = preduckspeed[id];										
+									preduckspeed[id] = 0.0;
+								}
 								if(Pmaxspeed * 1.2 > speed[id]) 
 								{
-									prebhopspeed[id] = speed[id]
-									if ( floatround(preladderspeed[id]) > 20) {
-										bhopgainspeed[id] = preladderspeed[id];										
-										preladderspeed[id] = 0.0;
-									}
-									else if ( floatround(preduckspeed[id]) > 100) {
-										duckgainspeed[id] = preduckspeed[id];										
-										preduckspeed[id] = 0.0;
-									}
-									if ( duckgainspeed[id] > speed[id] ) {
+									if ( duckgainspeed[id] > speed[id] ) 
+									{
 										new szMessage[ 64 ];
-										formatex( szMessage, charsmax( szMessage ), "%s %.2f(-%.1f)^nFOG:%i (%.2f)", FOGTYPE, speed[id], duckgainspeed[id] - speed[id], g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
-										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
-
+										if (8 <= g_iFramesOnGround[id])	// FOG太高
+										{
+											formatex( szMessage, charsmax( szMessage ), "%.2f", speed[id]);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, 0, 100, 255, 255 , 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
+										}
+										else
+										{
+											formatex( szMessage, charsmax( szMessage ), "%s %.2f(-%.1f)^nFOG:%i (%.2f)", FOGTYPE, speed[id], duckgainspeed[id] - speed[id], g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
+										}
 									}
-									else if ( duckgainspeed[id] == 0.0 || duckgainspeed[id] == speed[id]) {
+									else if ( duckgainspeed[id] == 0.0 || duckgainspeed[id] == speed[id]) 
+									{
 										new szMessage[ 64 ];
 										formatex( szMessage, charsmax( szMessage ),  "%.2f", speed[id] );
-										send_hudmessage(i,	szMessage, -1.0 ,0.65,  0, 100, 255, 255 , 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0)
+										send_hudmessage(i,	szMessage, -1.0 ,0.65,  0, 100, 255, 255 , 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0)
 
 									}
-									else if ( duckgainspeed[id] < speed[id] ) {
+									else if ( duckgainspeed[id] < speed[id] ) 
+									{
 										new szMessage[ 64 ];
-										formatex( szMessage, charsmax( szMessage ), "%s %.2f(-%.1f)^nFOG:%i (%.2f)", FOGTYPE, speed[id], speed[id] - duckgainspeed[id], g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
-										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
+										if (8 <= g_iFramesOnGround[id])	// FOG太高
+										{
+											formatex( szMessage, charsmax( szMessage ), "%.2f", speed[id]);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, 0, 100, 255, 255 , 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
+										}
+										else
+										{
+											formatex( szMessage, charsmax( szMessage ), "%s %.2f(+%.1f)^nFOG:%i (%.2f)", FOGTYPE, speed[id], speed[id] - duckgainspeed[id], g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
+											send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
+										}
 									}
 								}
 								else
@@ -348,12 +398,13 @@ public fwdPreThink( id )
 									{
 										new szMessage[ 64 ];
 										formatex( szMessage, charsmax( szMessage ), "Your Prestrafe %.2f(-%.1f) is too high(%.01f)^nFOG:%i (%.2f)", speed[id], bhopgainspeed[id] - speed[id], 1.2 * Pmaxspeed, g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
-										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
+										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
 									}
-									else if ( bhopgainspeed[id] < speed[id] ) {	// 超速加速
+									else if ( bhopgainspeed[id] < speed[id] ) 
+									{	// 超速加速
 										new szMessage[ 64 ];
 										formatex( szMessage, charsmax( szMessage ), "Your Prestrafe %.2f(+%.1f) is too high(%.01f)^nFOG:%i (%.2f)", speed[id], speed[id] - bhopgainspeed[id], 1.2 * Pmaxspeed, g_iFramesOnGround[id], g_flGroundTouchSpeed[id]);
-										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, 3 , 0, 0, 0, 0, 255, 0.0);
+										send_hudmessage(i, szMessage, -1.0 ,0.65, preHudRGB[0], preHudRGB[1], preHudRGB[2], 255, 1.8, 0.01, 0.0, pre_hud_channel , 0, 0, 0, 0, 255, 0.0);
 									}
 								}
 							}

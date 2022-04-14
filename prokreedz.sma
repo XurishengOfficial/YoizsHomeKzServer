@@ -170,7 +170,6 @@ new const g_szAliveFlags[] = "a"
 #define KZ_ADMIN ADMIN_IMMUNITY
 #define KZ_LEVEL ADMIN_KICK 
 #define KZ_LEVEL_VIP ADMIN_LEVEL_C
-#define KZ_LEVEL_RTV ADMIN_LEVEL_D
 
 #define ECHOCMD
 #define UPDATEINTERVAL_SPECLIST 0.5
@@ -502,6 +501,10 @@ new kz_top15_authid
 new Sbeam = 0
 
 
+stock is_user_vip(id) { return get_user_flags(id) & KZ_LEVEL_VIP; }
+stock is_user_kz_admin(id) { return get_user_flags(id) & KZ_LEVEL; }
+stock is_user_main_admin(id) { return get_user_flags(id) & KZ_ADMIN; }
+
 stock menu_vadditem(menu, const info[]="", paccess=0, callback=-1, const fmt[], ...) 
 {
 	static buf[128]
@@ -636,6 +639,7 @@ new gc_bot_enable;
 new gc_bot_frame;
 new gc_bot_id;
 new gc_bot_speed = 1;
+// new gc_bot_play_type = 0;
 new gc_authid[32];
 new gc_date[64];
 new gc_country[128];
@@ -794,7 +798,7 @@ public plugin_init()
 	kz_register_saycmd("version", "Version", 0)
 	kz_register_saycmd("weapons", "weapons", 0)
 	kz_register_saycmd("guns", "weapons", 0)	
-	kz_register_saycmd("kzbot", "ClCmd_ReplayMenu", 0)	
+	kz_register_saycmd("kzbot", "ClCmd_ReplayMenu", KZ_LEVEL)	
 	new weaponNames[8][] = 
 	{
 		"scout", "p90", "famas", "sg552",
@@ -1997,9 +2001,8 @@ public BotThink( id )
 				set_pev( id, pev_gaitsequence, 6 );
 
 			// 疑似没用 记录时间小于100帧?
-			// if(nFrame == ArraySize( g_DemoPlaybot[0] ) - 1)
-			// 	Start_Bot();
-			// }
+			if(nFrame == ArraySize( g_DemoPlaybot[0] ) - 1)
+				Start_Bot();
 
 		} else  {
 			start_climb_bot(g_bot_id);
@@ -2029,12 +2032,13 @@ public BotThink_c(id)
 	if(gc_bot_enable == 1 && gc_bot_id)
 	{
 		new i;
-		while (i < gc_bot_speed && !gc_bot_pause) // 通过gc_bot_pause控制 g_bot_frame是否增加(不增加则暂停)
+		while (i < abs(gc_bot_speed) && !gc_bot_pause) // 通过gc_bot_pause控制 g_bot_frame是否增加(不增加则暂停)
 		{
-			gc_bot_frame += 1;
+			if(gc_bot_speed > 0) gc_bot_frame++;
+			else gc_bot_frame--;
 			i++;
 		}
-		if ( gc_bot_frame < ArraySize( gc_DemoPlaybot[0] ) )
+		if ( gc_bot_frame < ArraySize( gc_DemoPlaybot[0] ) && gc_bot_frame >= 0 )
 		{
 			new ArrayData[DemoData], Float:ViewAngles[3];
 			ArrayGetArray(gc_DemoPlaybot[0], gc_bot_frame, ArrayData);
@@ -2314,9 +2318,8 @@ stock force_team_join(id, menu_msgid)
 
 public ExtendTime(id)//延长时间
 {
-	if (! ((get_user_flags( id ) & KZ_LEVEL_VIP ) || is_user_admin(id) ) )
+	if (! (get_user_flags(id) & KZ_LEVEL_VIP) )
 	{
-		server_print("NOT VIP");
 		ColorChat(id, GREEN,  "%s ^x01Only VIP can addtime!", prefix)
 		return PLUGIN_HANDLED
 	}
@@ -2329,12 +2332,11 @@ public ExtendTime(id)//延长时间
 	
 	if (addtimemapcount[id] < 10)
 	{
-	
 		if (str_to_num(arg) < 30)
 		{
 			set_pcvar_num(mp_timelimit, newlimit);
 			new tl = get_timeleft();
-			if(is_user_admin(id))
+			if(is_user_kz_admin(id))
 				ColorChat(0, GREEN, "%s ^1ADMIN: ^3%s ^1%L^3 %d ^1Min, TiMe Left: (^3%d:%02d^1)", prefix, name, LANG_PLAYER, "KZ_ETIME_ADDTIME", str_to_num(arg), (tl / 60), (tl % 60));
 			else
 				ColorChat(0, GREEN, "%s ^1VIP: ^3%s ^1%L^3 %d ^1Min, TiMe Left: (^3%d:%02d^1)", prefix, name, LANG_PLAYER, "KZ_ETIME_ADDTIME", str_to_num(arg), (tl / 60), (tl % 60));
@@ -3687,7 +3689,6 @@ public timer_task()
 							kreedztime += g_bot_cur_compensated_time;
 						}
 						else if(target && target == gc_bot_id) {
-							
 							gc_bot_cur_compensated_time = gc_bot_pause ? 0.0 : (get_gametime() - gc_bot_fastforwardtime) * (gc_bot_speed - 1);
 							kreedztime += gc_bot_sum_compensated_time;	
 							kreedztime += gc_bot_cur_compensated_time;
@@ -4635,7 +4636,7 @@ public MessageScoreAttrib( iMsgID, iDest, iReceiver )
 	if( get_pcvar_num(kz_vip) )
 	{
 		new iPlayer = get_msg_arg_int(1)
-		if( is_user_alive( iPlayer ) && ( get_user_flags( iPlayer ) & KZ_LEVEL ) )
+		if( is_user_alive( iPlayer ) && ( get_user_flags( iPlayer ) & KZ_LEVEL_VIP ) )
 		{
 			set_msg_arg_int( 2, ARG_BYTE, SCOREATTRIB_VIP );
 		}
@@ -6170,10 +6171,8 @@ public client_disconnect(id)
 		block_change[id] = false	
 	}
 	#endif
-	if (get_user_flags(id) & KZ_LEVEL)
-		g_bHideMe[id] = true;
-	else
-		g_bHideMe[id] = false;
+	
+	g_bHideMe[id] = false;
 	
 	if (is_user_connected(id))
 	{
@@ -6827,23 +6826,27 @@ public JumpMenuHandler(id , menu, item)
 //============================================================================
 public AdminMenu(id)
 {
-	if( !( (get_user_flags(id) & KZ_ADMIN) || (get_user_flags(id) & KZ_LEVEL) || (get_user_flags(id) & KZ_LEVEL_VIP) ) ) {
+	// if( !( (get_user_flags(id) & KZ_ADMIN) || (get_user_flags(id) & KZ_LEVEL) || (get_user_flags(id) & KZ_LEVEL_VIP) ) ) {
+	// 设置成每个人都能打开 但是没有权限的直接灰掉
+	// is_user_admin(id) 有任何权限返回1
+	if(!is_user_admin(id)) {
 		kz_chat(id, "%L", id, "KZ_NO_ACCESS");
 		return PLUGIN_HANDLED
 	}
+	
 	new menu = menu_create("\rKreedz Admin Menu\w", "AdminMenuHandler")
 	new hidespec[64]
 	formatex(hidespec, 63, "隐藏在观察者 - %s",  g_bHideMe[id] ? "\yOn" : "\rOff" )
 
 		
-	menu_additem( menu, "AMXX管理员菜单^n", "1" )
-	menu_additem( menu, "设置地图类型", "2" )
-	menu_additem( menu, "发起地图投票", "3" )
-	menu_additem( menu, "直接更换地图^n", "4" )
-	menu_additem( menu, "连跳板子设定\y(鼠标准星标记)", "5" )
-	menu_additem( menu, "更新最新记录\y(XJ CC NT)^n", "6" )
-	menu_additem( menu, hidespec, "7" )
-	menu_additem( menu, "服务器BOT设置", "8");
+	menu_additem( menu, "AMXX管理员菜单^n", "1" )	// Admin AMXX自动判断
+	menu_additem( menu, is_user_vip(id) ? 		"设置地图类型" : "\d设置地图类型", "2" )										// VIP
+	menu_additem( menu, is_user_vip(id) ? 		"发起地图投票" : "\d发起地图投票", "3" )										// VIP
+	menu_additem( menu, is_user_vip(id) ? 		"直接更换地图^n" : "\d直接更换地图^n", "4" )									// VIP
+	menu_additem( menu, is_user_kz_admin(id) ? 	"连跳板子设定\y(鼠标准星标记)" : "\d连跳板子设定(鼠标准星标记)", "5" )		// KZ_LEVEL
+	menu_additem( menu, is_user_kz_admin(id) ? 	"更新最新记录\y(XJ CC NT)^n" : "\d更新最新记录(XJ CC NT)^n", "6" )		// KZ_LEVEL
+	menu_additem( menu, is_user_vip(id) ? 		hidespec : "\d隐藏在观察者 - Off", "7" )								// VIP
+	menu_additem( menu, is_user_kz_admin(id) ? 	"服务器BOT设置" : "\d服务器BOT设置", "8");								// KZ_LEVEL
 
 	menu_display(id, menu, 0)
 	return PLUGIN_HANDLED 
@@ -6868,10 +6871,20 @@ public AdminMenuHandler (id, menu, item, level, cid)
 		}
 		case 1:
 		{
+			if(!is_user_vip(id)) {
+				kz_chat(id, "%L", id, "KZ_NO_ACCESS");
+				AdminMenu(id);
+				return PLUGIN_HANDLED
+			}
 			setmaps(id)
 		}
 		case 2:
 		{
+			if(!is_user_vip(id)) {
+				kz_chat(id, "%L", id, "KZ_NO_ACCESS");
+				AdminMenu(id);
+				return PLUGIN_HANDLED
+			}
 			if(callfunc_begin("Command_StartVote","xmap_manager.amxx") == 1) 	//startvote
 			{
 				callfunc_push_int(id)
@@ -6880,6 +6893,11 @@ public AdminMenuHandler (id, menu, item, level, cid)
 		}
 		case 3:
 		{
+			if(!is_user_vip(id)) {
+				kz_chat(id, "%L", id, "KZ_NO_ACCESS");
+				AdminMenu(id);
+				return PLUGIN_HANDLED
+			}
 			client_cmd(id, "messagemode amx_map");
 			ColorChat(id, Color:5, "^x04%s ^x01请输入^x03地图名...", prefix);
 			ColorChat(id, Color:5, "^x04%s ^x01请输入^x03地图名...", prefix);
@@ -6887,6 +6905,11 @@ public AdminMenuHandler (id, menu, item, level, cid)
 		}
 		case 4:
 		{
+			if(!is_user_kz_admin(id)) {
+				kz_chat(id, "%L", id, "KZ_NO_ACCESS");
+				AdminMenu(id);
+				return PLUGIN_HANDLED
+			}
 			if(callfunc_begin("ClCmd_BhopMenu","mpbhop.amxx") == 1) 	//mpbhop menu
 			{
 				callfunc_push_int(id)
@@ -6895,20 +6918,35 @@ public AdminMenuHandler (id, menu, item, level, cid)
 		}
 		case 5:
 		{
+			if(!is_user_kz_admin(id)) {
+				kz_chat(id, "%L", id, "KZ_NO_ACCESS");
+				AdminMenu(id);
+				return PLUGIN_HANDLED
+			}
 			cmdUpdateWRdata(id)
 		}
 		case 6:
 		{
-			if(callfunc_begin("cmdHideme","speclist&clientinfo_src.amxx") == 1)  //speclist (hideme [admin])
-			{
-				callfunc_push_int(id)
-				callfunc_end()
+			// if(callfunc_begin("cmdHideme","speclist&clientinfo_src.amxx") == 1)  //speclist (hideme [admin])
+			// {
+			// 	callfunc_push_int(id)
+			// 	callfunc_end()
+			// }
+			if(!is_user_vip(id)) {
+				kz_chat(id, "%L", id, "KZ_NO_ACCESS");
+				AdminMenu(id);
+				return PLUGIN_HANDLED
 			}	
 			hideme(id)
 			AdminMenu(id)
 		}
 		case 7:
 		{
+			if(!is_user_kz_admin(id)) {
+				kz_chat(id, "%L", id, "KZ_NO_ACCESS");
+				AdminMenu(id);
+				return PLUGIN_HANDLED
+			}
 			ClCmd_ReplayMenu(id);
 		}
 	}
@@ -6920,7 +6958,7 @@ public AdminMenuHandler (id, menu, item, level, cid)
 //						Pro Bot Menu
 //============================================================================
 public ClCmd_ReplayMenu(id) {
-	if( !( (get_user_flags(id) & KZ_ADMIN) || (get_user_flags(id) & KZ_LEVEL) || (get_user_flags(id) & KZ_LEVEL_VIP) ) ) {
+	if(!( get_user_flags(id) & KZ_LEVEL )) {
 		kz_chat(id, "%L", id, "KZ_NO_ACCESS");
 		return;
 	}
@@ -6991,7 +7029,7 @@ public ClCmd_ReplayMenuHandler(id, menu, item) {
 //						Nub Bot Menu
 //============================================================================
 public ClCmd_ReplayMenu_c(id) {
-	if( !( (get_user_flags(id) & KZ_ADMIN) || (get_user_flags(id) & KZ_LEVEL) || (get_user_flags(id) & KZ_LEVEL_VIP) ) ) {
+	if(!( get_user_flags(id) & KZ_LEVEL )) {
 		kz_chat(id, "%L", id, "KZ_NO_ACCESS");
 		return;
 	}
@@ -6999,20 +7037,24 @@ public ClCmd_ReplayMenu_c(id) {
 	new szTimer[14];
 	new title[256];
 	new speedInfo[32];
+	new playTypeInfo[32];
+	// new playType[2][] = {"FastForward", "Rewind"};
 	new launchInfo[16];
 	new kickBotInfo[64];
 	StringTimer(gc_ReplayBestRunTime, szTimer, charsmax(szTimer));
 	formatex(title, charsmax(title), "\r#Kreedz Server \w[\yNUB\w] \rRecord Bot Menu^n\dCode Edited by \rAzuki daisuki~^n^n\dMap \y%s^n\d[\yNUB\d] Time \y%s^n\d[\yNUB\d] by \y%s", MapName, szTimer, gc_ReplayName);
 	formatex(launchInfo, charsmax(launchInfo), gc_bot_pause? "Continue" : "Pause");
 	formatex(speedInfo, charsmax(speedInfo), "Play Speed - [\rx%d\w]", gc_bot_speed);
+	formatex(playTypeInfo, charsmax(playTypeInfo), "Play Type - [\r%s\w]", gc_bot_speed > 0 ? "FastForward" : "Rewind");
 	formatex(kickBotInfo, charsmax(kickBotInfo), "Kick BOT \d[ \r[NUB]%s\d ]^n^n", gc_ReplayName);
 
 	new menu = menu_create(title, "ClCmd_ReplayMenuHandler_c");
 	menu_additem( menu, "Restart", 				"1" );
 	menu_additem( menu, launchInfo, 			"2" );
-	menu_additem( menu, speedInfo, 				"3" );
-	menu_additem( menu, kickBotInfo,			"4" );
-	menu_additem( menu, "GO \r[Pro] BOT Menu",	"5" );
+	menu_additem( menu, playTypeInfo, 			"3" );
+	menu_additem( menu, speedInfo, 				"4" );
+	menu_additem( menu, kickBotInfo,			"5" );
+	menu_additem( menu, "GO \r[Pro] BOT Menu",	"6" );
 	menu_display(id, menu, 0)
 	return;
 }
@@ -7034,20 +7076,25 @@ public ClCmd_ReplayMenuHandler_c(id, menu, item) {
 			}
 			ClCmd_ReplayMenu_c(id);
 		}
-		case 2:	// PLAY SPEED
+		case 2:	//PLAY TYPE
 		{
-			if(gc_bot_speed == 16) gc_bot_speed = 1;
+			gc_bot_speed *= -1;
+			ClCmd_ReplayMenu_c(id);
+		}
+		case 3:	// PLAY SPEED
+		{
+			if(abs(gc_bot_speed) == 16) gc_bot_speed = gc_bot_speed > 0 ? 1 : -1;
 			else gc_bot_speed *= 2;
 			gc_bot_fastforwardtime = get_gametime();
 			if(!gc_bot_pause) gc_bot_sum_compensated_time += gc_bot_cur_compensated_time;	// 播放速度发生变化 则立刻累计本时段内时间差; 暂停时不用补偿
 			ClCmd_ReplayMenu_c(id);
 		}
-		case 3:	//KICK BOT
+		case 4:	//KICK BOT
 		{
 			Remove_Bot_c();
 			ClCmd_ReplayMenu_c(id);
 		}
-		case 4:	//GO [Pro]BOT MENU
+		case 5:	//GO [Pro]BOT MENU
 		{
 			ClCmd_ReplayMenu(id);
 		}
@@ -7059,12 +7106,10 @@ public ClCmd_ReplayMenuHandler_c(id, menu, item) {
 }
 public hideme(id)
 {
-	if (!(get_user_flags(id) & KZ_LEVEL))
-	
+	if (!(get_user_flags(id) & KZ_LEVEL_VIP))
 		return PLUGIN_HANDLED;
-
+		
 	g_bHideMe[id] = !g_bHideMe[id];
-	
 	return PLUGIN_HANDLED;
 }
 
@@ -7225,7 +7270,8 @@ public ServerInfo_Console(id)
 
 public setmaps(id)
 {
-	if(get_user_flags(id) & KZ_LEVEL)
+	// if(get_user_flags(id) & KZ_LEVEL || get_user_flags(id) & KZ_LEVEL)
+	if(is_user_vip(id))
 	{
 		static opcion[64]
 		formatex(opcion, charsmax(opcion),"\y%s \r%s \dMaps Type Menu",prefix, MapName)	
