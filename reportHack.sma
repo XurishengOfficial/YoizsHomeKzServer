@@ -88,42 +88,84 @@ public report_menu(id, menu, item)
     new reportSteamId[32];
     get_user_info(id, "name", reportName, charsmax(reportName));
     get_user_authid(id, reportSteamId, charsmax(reportSteamId));
-    //非admin则仅仅是记录在案
-    if(!is_user_admin(id)) {
-        log_to_file(reportHackFilePath, "^"%s^" <%s> report ^"%s^" <%s> on the map: ^"%s^"", reportName, reportSteamId, hackName, hackSteamId, mapName);
-        // fprintf(fp, "%s ^"\n^"", "Test");
-        // fprintf(fp, "^"%s^" < %s > report ^"%s^" < %s > on the map: ^"%s^"", reportName, reportSteamId, hackName, hackSteamId, mapName);
-        // fclose(fp);
-        client_print(id, print_chat, "您的反馈已记录在服务器，管理员不定期进行处理，感谢支持!");
-    }
+    //非BOT则仅仅是记录在案 
+    log_to_file(reportHackFilePath, "^"%s^" <%s> report ^"%s^" <%s> on the map: ^"%s^"", reportName, reportSteamId, hackName, hackSteamId, mapName);
+    // fprintf(fp, "%s ^"\n^"", "Test");
+    // fprintf(fp, "^"%s^" < %s > report ^"%s^" < %s > on the map: ^"%s^"", reportName, reportSteamId, hackName, hackSteamId, mapName);
+    // fclose(fp);
+    client_print(id, print_chat, "您的反馈已记录在服务器，管理员不定期进行处理，感谢支持!");
     //是admin 如果举报的是BOT则直接删除本地的bot文件和排名文件
-    else {
+    if(is_user_admin(id)) {
         if(equal(hackSteamId, "BOT")) {
             new configdir[64];
             new top15FilePath[128];
+            new botFilePath[128];
             get_configsdir(configdir, charsmax(configdir));
-            if(equal(hackName, "[N", 2))
+            if(equal(hackName, "[N", 2)) {
                 formatex(top15FilePath, charsmax(top15FilePath), "%s/kz/top15/Noob_%s.cfg", configdir, mapName);
-            if(equal(hackName, "[P", 2))
+                formatex(botFilePath, charsmax(botFilePath), "%s/records/Nub/%s.txt", datadir, mapName);
+            }
+            else if(equal(hackName, "[P", 2)) {
                 formatex(top15FilePath, charsmax(top15FilePath), "%s/kz/top15/pro_%s.cfg", configdir, mapName);
+                formatex(botFilePath, charsmax(botFilePath), "%s/records/Pro/%s.txt", datadir, mapName);
+            }
             server_print("============================");
             server_print("%s", configdir);
             server_print("%s", top15FilePath);
+            server_print("%s", datadir);
+            server_print("%s", botFilePath);
             
+            // 删除RANK文件
             if(file_exists(top15FilePath)) {
-                server_print("file exists!");
+                server_print("%s exists!", top15FilePath);
                 if(delete_file(top15FilePath)) {
-                    server_print("delete file success!");
+                    server_print("delete file %s success!", top15FilePath);
+                    log_to_file(reportHackFilePath, "=========================================================================");
+                    log_to_file(reportHackFilePath, "Success: Admin ^"%s^" <%s> Deleted RANK info on the map: ^"%s^"", reportName, reportSteamId, mapName);
+                    log_to_file(reportHackFilePath, "=========================================================================");
                     client_print(id, print_chat, "对应地图的排行已重置, 重启服务器生效!");
                 }
                 else {
-                    server_print("delete file failed!"); 
+                    server_print("delete file %s failed!", top15FilePath); 
+                    log_to_file(reportHackFilePath, "=========================================================================");
+                    log_to_file(reportHackFilePath, "Error: Admin: ^"%s^" <%s> Deleted RANK info on the map: ^"%s^" Failed!!! Reason: Delete Fail!", reportName, reportSteamId, mapName);
+                    log_to_file(reportHackFilePath, "=========================================================================");
                     client_print(id, print_chat, "删除相应地图排行文件失败!");
                 }
             }
             else {
                 server_print("file %s NOT exists!", top15FilePath);
                 client_print(id, print_chat, "相关地图排行文件不存在, 删除失败!");
+                log_to_file(reportHackFilePath, "=========================================================================");
+                log_to_file(reportHackFilePath, "Error: Admin: ^"%s^" <%s> Deleted RANK info on the map: ^"%s^" Failed!!! Reason: File DO NOT EXIST", reportName, reportSteamId, mapName);
+                log_to_file(reportHackFilePath, "=========================================================================");
+            }
+
+            // 删除BOT文件
+            if(file_exists(botFilePath)) {
+                server_print("%s exists!", botFilePath);
+                if(delete_file(botFilePath)) {
+                    server_print("delete file %s success!", botFilePath);
+                    log_to_file(reportHackFilePath, "=========================================================================");
+                    log_to_file(reportHackFilePath, "Success: Admin ^"%s^" <%s> Deleted ^"%s^" <%s> on the map: ^"%s^"", reportName, reportSteamId, hackName, hackSteamId, mapName);
+                    log_to_file(reportHackFilePath, "=========================================================================");
+                    client_print(id, print_chat, "对应地图的Demo已重置, 重启服务器生效!");
+                    if(callfunc_begin("ReadBestRunFile", "prokreedz.amxx")) callfunc_end();
+                }
+                else {
+                    server_print("delete file %s failed!", botFilePath); 
+                    log_to_file(reportHackFilePath, "=========================================================================");
+                    log_to_file(reportHackFilePath, "Error: Admin: ^"%s^" <%s> Deleted ^"%s^" <%s> on the map: ^"%s^" Failed!!! Reason: Delete Fail!", reportName, reportSteamId, hackName, hackSteamId, mapName);
+                    log_to_file(reportHackFilePath, "=========================================================================");
+                    client_print(id, print_chat, "删除相应地图Demo文件失败!");
+                }
+            }
+            else {
+                server_print("file %s NOT exists!", botFilePath);
+                client_print(id, print_chat, "相关地图Demo文件不存在, 删除失败!");
+                log_to_file(reportHackFilePath, "=========================================================================");
+                log_to_file(reportHackFilePath, "Error: Admin: ^"%s^" <%s> Deleted ^"%s^" <%s> on the map: ^"%s^" Failed!!! Reason: File DO NOT EXIST", reportName, reportSteamId, hackName, hackSteamId, mapName);
+                log_to_file(reportHackFilePath, "=========================================================================");
             }
             server_print("============================");
         }

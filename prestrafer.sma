@@ -35,7 +35,7 @@ new Float:g_flSpeed[33];
 // new Float:g_flSpeedPrev[33];
 new Float:g_flGroundTouchSpeed[33];
 
-new pre_hud_channel = 1;
+new pre_hud_channel = 3;
 
 public plugin_init() {
 	register_plugin(PLUGIN, VERSION, AUTHOR);
