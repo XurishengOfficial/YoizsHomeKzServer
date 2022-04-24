@@ -610,44 +610,44 @@ enum ClientData
 enum EntityState
 {
 	// Fields which are filled in by routines outside of delta compression
-	ES_EntityType,		// int
+	ES_EntityType,		// int	0
 	// Index into cl_entities array for this entity
-	ES_Number,			// int
-	ES_MsgTime,			// float
+	ES_Number,			// int	1
+	ES_MsgTime,			// float	2
 	
 	// Message number last time the player/entity state was updated
-	ES_MessageNum,		// int
+	ES_MessageNum,		// int	3
 	
 	// Fields which can be transitted and reconstructed over the network stream
-	ES_Origin,			// float array[3]
-	ES_Angles,			// float array[3]
+	ES_Origin,			// float array[3]	4
+	ES_Angles,			// float array[3]	5
 	
-	ES_ModelIndex,		// int
-	ES_Sequence,		// int
-	ES_Frame,			// float
-	ES_ColorMap,		// int
-	ES_Skin,			// short
-	ES_Solid,			// short
-	ES_Effects,			// int 
-	ES_Scale,			// float
-	ES_eFlags,			// byte
+	ES_ModelIndex,		// int	6
+	ES_Sequence,		// int	7
+	ES_Frame,			// float	8
+	ES_ColorMap,		// int	9
+	ES_Skin,			// short	10
+	ES_Solid,			// short	11
+	ES_Effects,			// int 	12
+	ES_Scale,			// float	13
+	ES_eFlags,			// byte	14
 	
 	// Render information
-	ES_RenderMode,		// int
+	ES_RenderMode,		// int								15
 	ES_RenderAmt,		// int
 	ES_RenderColor,		// byte array[3], RGB value
 	ES_RenderFx,		// int
 	
 	ES_MoveType,		// int
-	ES_AnimTime,		// float
+	ES_AnimTime,		// float							20
 	ES_FrameRate,		// float
 	ES_Body,			// int
 	ES_Controller,		// byte array[4]
 	ES_Blending,		// byte array[4]
-	ES_Velocity,		// float array[3]
+	ES_Velocity,		// float array[3]					
 	
 	// Send bbox down to client for use during prediction
-	ES_Mins,			// float array[3]
+	ES_Mins,			// float array[3]					26
 	ES_Maxs,			// float array[3]
 	
 	ES_AimEnt,			// int

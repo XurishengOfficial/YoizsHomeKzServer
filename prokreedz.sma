@@ -1970,18 +1970,18 @@ public BotThink( id )
 			ViewAngles[1] = ArrayData[flBotAngle][1];
 			ViewAngles[2] = 0.0;
 
-			if(ArrayData[iButton]&IN_ALT1) ArrayData[iButton]|=IN_JUMP;
-			if(ArrayData[iButton]&IN_RUN)  ArrayData[iButton]|=IN_DUCK;
+			if(ArrayData[iButton] & IN_ALT1) ArrayData[iButton] |= IN_JUMP;
+			if(ArrayData[iButton] & IN_RUN)  ArrayData[iButton] |= IN_DUCK;
 
-			if(ArrayData[iButton]&IN_RIGHT)
+			if(ArrayData[iButton] & IN_RIGHT)
 			{
 				engclient_cmd(id, "weapon_usp");
-				ArrayData[iButton]&=~IN_RIGHT;
+				ArrayData[iButton] &= ~IN_RIGHT;
 			}
-			if(ArrayData[iButton]&IN_LEFT)
+			if(ArrayData[iButton] & IN_LEFT)
 			{
 				engclient_cmd(id, "weapon_knife");
-				ArrayData[iButton]&=~IN_LEFT;
+				ArrayData[iButton] &= ~IN_LEFT;
 			}
 			//if ( ArrayData[iButton] & IN_USE )
 			//{
@@ -4715,7 +4715,7 @@ public CheckPoint(id)
 
 	static entname[33];
 	pev(pev(id, pev_groundentity), pev_classname, entname, 32)
-	if (equal(entname, "func_door") && !SlideMap && !IsOnLadder(id))
+	if (equal(entname, "func_door") && !SlideMap && !IsOnLadder(id) && !IsSliding(id))
 	{
 		kz_chat(id, "%L", id, "KZ_CBBLOCK_DISABLED")
 		return PLUGIN_HANDLED;
@@ -4723,7 +4723,7 @@ public CheckPoint(id)
 	
 	// if( !( pev( id, pev_flags ) & FL_ONGROUND2 ) && !IsOnLadder(id) && !SlideMap)
 	// if( !( pev( id, pev_flags ) & FL_ONGROUND2 ) && !IsOnLadder(id) && timer_started[id] && !IsPaused[id])
-	if( !( pev( id, pev_flags ) & FL_ONGROUND2 ) && !IsOnLadder(id))
+	if( !( pev( id, pev_flags ) & FL_ONGROUND2 ) && !IsOnLadder(id) && !IsSliding(id) )
 	{
 		kz_chat(id, "%L", id, "KZ_CHECKPOINT_AIR")
 		return PLUGIN_HANDLED
@@ -6351,7 +6351,7 @@ public client_infochanged(id)
 
 
 // =================================================================================================
-// Menu
+// Main Menu
 // =================================================================================================
 
 public kz_menu(id)
@@ -6434,7 +6434,6 @@ public MenuHandler(id , menu, item)
  
 	switch(item) 
 	{
-
 		case 0:
 		{
 			JumpMenu(id)
@@ -9473,6 +9472,39 @@ public tskShowSpec()
 	// client_print(0, print_chat, "Before return......");
 	return PLUGIN_CONTINUE;
 }
+
+IsSliding(id)
+{
+	if (!is_user_alive(id)) return 0;
+
+	new flags = entity_get_int(id, EV_INT_flags);
+	if (flags & FL_ONGROUND)	return 0; // Ground
+
+	new Float:origin[3] = 0.0;
+	new Float:dest[3] = 0.0;
+	pev(id, pev_origin, origin);
+	dest[0] = origin[0];
+	dest[1] = origin[1];
+	dest[2] = origin[2] - 1;	// 1
+	new ptr = create_tr2();
+	new var1;
+	if (flags & FL_DUCKING)	// DUCKING
+		var1 = 3;
+	else
+		var1 = 1;
+	engfunc(EngFunc_TraceHull, origin, dest, 0, var1, id, ptr);
+	new Float:flFraction = 0.0;
+	get_tr2(ptr, 4, flFraction);
+	if (flFraction >= 1.0)
+	{
+		free_tr2(ptr);
+		return 0;
+	}
+	get_tr2(ptr, 7, dest);
+	free_tr2(ptr);
+	return dest[2] <= 0.7;
+}
+
 //======================= SPECLIST END================================
 // Plugin Start 2.31Ver by nucLeaR
 // Last edit by Perfectslife 

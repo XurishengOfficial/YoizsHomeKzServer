@@ -31,18 +31,20 @@ public taskPrintInfo(args[]) {
     // log_amx("Login: ^"%s<%d><%s><>^" became an admin (account ^"%s^") (access ^"%s^") (address ^"%s^")", name, get_user_userid(id), authid, AuthData, sflags, ip)
     server_print("[logInfo.amxx] Join: ^"%s^" (account ^"%s^") (address ^"%s^") (From ^"%s^") joined the game" , name, steamId, ip, country);
     ColorChat(0, GREEN,  "[Holo]^x01玩家 ^x03%s ^x01加入了游戏, 来自^x03%s", name, country);
-    new datadir[64];
-    new logInfoFilePath[64];
+    // new datadir[64];
+    // new logInfoFilePath[64];
     
-    get_datadir(datadir, charsmax(datadir));
-    formatex(logInfoFilePath, charsmax(logInfoFilePath), "%s/logInfo/logInfo.log", datadir);
-    log_to_file(logInfoFilePath, "Join: ^"%s^" (account ^"%s^") (address ^"%s^") (From ^"%s^") joined the game" , name, steamId, ip, country);
-    if(equal(name, "E.T", 3) || equal(ip, "180.139", 7) || equal(ip, "180.141", 7)) {
-        server_cmd("amx_ban ^"%s^" 0", steamId);
-        server_cmd("amx_banip ^"%s^" 0", steamId);
-        ColorChat(0, GREEN,  "[Holo]^x01玩家 ^x03%s ^x01[^x03%s^x01]已被服务器封禁", name, ip);
-        new autoKickFilePath[64];
-        formatex(autoKickFilePath, charsmax(autoKickFilePath), "%s/autoKick/autoKick.log", datadir);
-        log_to_file(autoKickFilePath, "Banned: ^"%s^" (account ^"%s^") (address ^"%s^") for 0 mins" , name, steamId, ip);
-    }
+    // get_datadir(datadir, charsmax(datadir));
+    // formatex(logInfoFilePath, charsmax(logInfoFilePath), "%s/logInfo/logInfo.log", datadir);
+    // log_to_file(logInfoFilePath, "Join: ^"%s^" (account ^"%s^") (address ^"%s^") (From ^"%s^") joined the game" , name, steamId, ip, country);
+
+    // 广西脚本FW
+    // if(equal(name, "E.T", 3) || equal(ip, "180.139", 7) || equal(ip, "180.141", 7)) {
+    //     server_cmd("amx_ban ^"%s^" 0", steamId);
+    //     server_cmd("amx_banip ^"%s^" 0", steamId);
+    //     ColorChat(0, GREEN,  "[Holo]^x01玩家 ^x03%s ^x01[^x03%s^x01]已被服务器封禁", name, ip);
+    //     new autoKickFilePath[64];
+    //     formatex(autoKickFilePath, charsmax(autoKickFilePath), "%s/autoKick/autoKick.log", datadir);
+    //     log_to_file(autoKickFilePath, "Banned: ^"%s^" (account ^"%s^") (address ^"%s^") for 0 mins" , name, steamId, ip);
+    // }
 }

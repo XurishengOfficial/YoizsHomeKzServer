@@ -465,6 +465,7 @@ public fwdPreThink(id)
 				}
 			}
 			new var18;
+			// 小跳地速
 			if (button & 4 && !oldbuttons & 4 && flags & 512 && !is_user_duck[id])
 			{
 				new i = 1;
