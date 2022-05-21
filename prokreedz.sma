@@ -620,6 +620,8 @@ new g_bot_speed = 1;
 new g_authid[32];
 new g_date[64];
 new g_country[128];
+new g_bot_interval = 5;
+new g_bot_mark_frame = 0;
 
 // NUB
 new Array:gc_DemoPlaybot[1];
@@ -643,7 +645,8 @@ new gc_bot_speed = 1;
 new gc_authid[32];
 new gc_date[64];
 new gc_country[128];
-
+new gc_bot_interval = 5;
+new gc_bot_mark_frame = 0;
 
 new g_szMapName[32];
 
@@ -1956,9 +1959,10 @@ public BotThink( id )
 	{
 		// g_bot_frame++;
 		new i;
-		while (i < g_bot_speed && !g_bot_pause) // 通过g_bot_pause控制 g_bot_frame是否增加(不增加则暂停)
+		while (i < abs(g_bot_speed) && !g_bot_pause) // 通过g_bot_pause控制 g_bot_frame是否增加(不增加则暂停)
 		{
-			g_bot_frame += 1;
+			if(g_bot_speed > 0) g_bot_frame++;
+			else g_bot_frame--;
 			i++;
 		}
 		if ( g_bot_frame < ArraySize( g_DemoPlaybot[0] ) && g_bot_frame >= 0)
@@ -6952,7 +6956,9 @@ public AdminMenuHandler (id, menu, item, level, cid)
 				AdminMenu(id);
 				return PLUGIN_HANDLED
 			}
-			ClCmd_ReplayMenu(id);
+			if(g_bot_id) ClCmd_ReplayMenu(id);
+			else if(gc_bot_id) ClCmd_ReplayMenu_c(id);
+			else kz_chat(id, "%L", id, "KZ_NO_BOT");
 		}
 	}
 	return PLUGIN_HANDLED
@@ -6971,20 +6977,35 @@ public ClCmd_ReplayMenu(id) {
 	new szTimer[14];
 	new title[256];
 	new speedInfo[32];
+	new playTypeInfo[32];
 	new launchInfo[16];
+	new IntervalInfo[32];
 	new kickBotInfo[64];
+	new skipIntervalInfo[16];
+	new markFrameInfo[32];
+	new goMarkFrameInfo[32];
 	StringTimer(g_ReplayBestRunTime, szTimer, charsmax(szTimer));
 	formatex(title, charsmax(title), "\r#Kreedz Server \w[\yPRO\w] \rRecord Bot Menu^n\dCode Edited by \rAzuki daisuki~^n^n\dMap \y%s^n\d[\yPRO\d] Time \y%s^n\d[\yPRO\d] by \y%s", MapName, szTimer, g_ReplayName);
 	formatex(launchInfo, charsmax(launchInfo), g_bot_pause? "Continue" : "Pause");
 	formatex(speedInfo, charsmax(speedInfo), "Play Speed - [\rx%d\w]", g_bot_speed);
+	formatex(playTypeInfo, charsmax(playTypeInfo), "Play Type - [\r%s\w]", gc_bot_speed > 0 ? "FastForward" : "Rewind");
+	formatex(IntervalInfo, charsmax(IntervalInfo), "Interval: \y%ds", g_bot_interval);
+	formatex(skipIntervalInfo, charsmax(skipIntervalInfo), "\ySkip Interval");
+	formatex(markFrameInfo, charsmax(markFrameInfo), "Marked Frame: [\y%d\w]", g_bot_mark_frame);
+	formatex(goMarkFrameInfo, charsmax(goMarkFrameInfo), g_bot_mark_frame > 0? "\yGo Marked Frame" : "\dGo Marked Frame");
 	formatex(kickBotInfo, charsmax(kickBotInfo), "Kick BOT \d[ \r[PRO]%s\d ]^n^n", g_ReplayName);
 
 	new menu = menu_create(title, "ClCmd_ReplayMenuHandler");
-	menu_additem( menu, "Restart", 				"1" );
-	menu_additem( menu, launchInfo, 			"2" );
-	menu_additem( menu, speedInfo, 				"3" );
-	menu_additem( menu, kickBotInfo,			"4" );
-	menu_additem( menu, "GO \r[Nub] BOT Menu",	"5" );
+	menu_additem( menu, markFrameInfo,			"1" );
+	menu_additem( menu, goMarkFrameInfo,		"2" );
+	menu_additem( menu, playTypeInfo, 			"3" );
+	menu_additem( menu, speedInfo, 				"4" );
+	menu_additem( menu, IntervalInfo, 			"5" );
+	menu_additem( menu, skipIntervalInfo, 		"6" );
+	menu_additem( menu, "GO \r[Nub] BOT Menu",	"7" );
+	menu_additem( menu, "Restart", 				"8" );
+	menu_additem( menu, launchInfo, 			"9" );
+	menu_additem( menu, kickBotInfo,			"10" );
 	menu_display(id, menu, 0)
 	return;
 }
@@ -6992,21 +7013,22 @@ public ClCmd_ReplayMenu(id) {
 public ClCmd_ReplayMenuHandler(id, menu, item) {
 	switch (item)
 	{
-		case 0:	//RESTART
+		case 0:	//Mark Frame
 		{
-			if(g_bot_id) bot_restart();
-			else ReadBestRunFile();
+			g_bot_mark_frame = g_bot_frame;
 			ClCmd_ReplayMenu(id);
 		}
-		case 1:	//PLAY
+		case 1:	//GO Mark Frame
 		{
-			if (g_bot_enable && g_bot_id)
-			{
-				Pause_bot();
-			}
+			g_bot_frame = g_bot_mark_frame;
 			ClCmd_ReplayMenu(id);
 		}
-		case 2:	// PLAY SPEED
+		case 2:	//PLAY TYPE
+		{
+			g_bot_speed *= -1;
+			ClCmd_ReplayMenu(id);
+		}
+		case 3:	// PLAY SPEED
 		{
 			if(g_bot_speed == 16) g_bot_speed = 1;
 			else g_bot_speed *= 2;
@@ -7014,15 +7036,47 @@ public ClCmd_ReplayMenuHandler(id, menu, item) {
 			if(!g_bot_pause) g_bot_sum_compensated_time += g_bot_cur_compensated_time;	// 播放速度发生变化 则立刻累计本时段内时间差
 			ClCmd_ReplayMenu(id);
 		}
-		case 3:	//KICK BOT
+		case 4:	//INTERVALS
+		{
+			if(g_bot_interval > 0) g_bot_interval += 5;
+			else g_bot_interval -= 5;
+			if(g_bot_interval > 30) g_bot_interval = -5;
+			else if(g_bot_interval < -30) g_bot_interval = 5;
+			ClCmd_ReplayMenu(id);
+		}
+		case 5:	//SKip Interval
+		{
+			new authid[32];
+			new maxFps = 99.5;
+			get_user_authid(id, authid, 31);
+			if (equal(authid, "VALVE_ID_LAN") || equal(authid, "STEAM_ID_LAN")) maxFps = 101;
+			g_bot_frame += g_bot_interval * maxFps;
+			ClCmd_ReplayMenu(id);
+		}
+		case 6:	//GO [NUB]BOT MENU
+		{
+			ClCmd_ReplayMenu_c(id);
+		}
+		case 7:	//RESTART
+		{
+			if(g_bot_id) bot_restart();
+			else ReadBestRunFile();
+			ClCmd_ReplayMenu(id);
+		}
+		case 8:	//PLAY
+		{
+			if (g_bot_enable && g_bot_id)
+			{
+				Pause_bot();
+			}
+			ClCmd_ReplayMenu(id);
+		}
+		case 9:	//KICK BOT
 		{
 			Remove_Bot();
 			ClCmd_ReplayMenu(id);
 		}
-		case 4:	//GO [NUB]BOT MENU
-		{
-			ClCmd_ReplayMenu_c(id);
-		}
+		
 		default:
 		{
 		}
@@ -7043,23 +7097,34 @@ public ClCmd_ReplayMenu_c(id) {
 	new title[256];
 	new speedInfo[32];
 	new playTypeInfo[32];
-	// new playType[2][] = {"FastForward", "Rewind"};
 	new launchInfo[16];
+	new IntervalInfo[32];
 	new kickBotInfo[64];
+	new skipIntervalInfo[16];
+	new markFrameInfo[32];
+	new goMarkFrameInfo[32];
 	StringTimer(gc_ReplayBestRunTime, szTimer, charsmax(szTimer));
 	formatex(title, charsmax(title), "\r#Kreedz Server \w[\yNUB\w] \rRecord Bot Menu^n\dCode Edited by \rAzuki daisuki~^n^n\dMap \y%s^n\d[\yNUB\d] Time \y%s^n\d[\yNUB\d] by \y%s", MapName, szTimer, gc_ReplayName);
 	formatex(launchInfo, charsmax(launchInfo), gc_bot_pause? "Continue" : "Pause");
 	formatex(speedInfo, charsmax(speedInfo), "Play Speed - [\rx%d\w]", gc_bot_speed);
 	formatex(playTypeInfo, charsmax(playTypeInfo), "Play Type - [\r%s\w]", gc_bot_speed > 0 ? "FastForward" : "Rewind");
+	formatex(IntervalInfo, charsmax(IntervalInfo), "Interval: \y%ds", gc_bot_interval);
+	formatex(skipIntervalInfo, charsmax(skipIntervalInfo), "\ySkip Interval");
+	formatex(markFrameInfo, charsmax(markFrameInfo), "Marked Frame: [\y%d\w]", gc_bot_mark_frame);
+	formatex(goMarkFrameInfo, charsmax(goMarkFrameInfo), gc_bot_mark_frame > 0? "\yGo Marked Frame" : "\dGo Marked Frame");
 	formatex(kickBotInfo, charsmax(kickBotInfo), "Kick BOT \d[ \r[NUB]%s\d ]^n^n", gc_ReplayName);
 
 	new menu = menu_create(title, "ClCmd_ReplayMenuHandler_c");
-	menu_additem( menu, "Restart", 				"1" );
-	menu_additem( menu, launchInfo, 			"2" );
+	menu_additem( menu, markFrameInfo,			"1" );
+	menu_additem( menu, goMarkFrameInfo,		"2" );
 	menu_additem( menu, playTypeInfo, 			"3" );
 	menu_additem( menu, speedInfo, 				"4" );
-	menu_additem( menu, kickBotInfo,			"5" );
-	menu_additem( menu, "GO \r[Pro] BOT Menu",	"6" );
+	menu_additem( menu, IntervalInfo, 			"5" );
+	menu_additem( menu, skipIntervalInfo, 		"6" );
+	menu_additem( menu, "GO \r[Pro] BOT Menu",	"7" );
+	menu_additem( menu, "Restart", 				"8" );
+	menu_additem( menu, launchInfo, 			"9" );
+	menu_additem( menu, kickBotInfo,			"10" );
 	menu_display(id, menu, 0)
 	return;
 }
@@ -7067,18 +7132,14 @@ public ClCmd_ReplayMenu_c(id) {
 public ClCmd_ReplayMenuHandler_c(id, menu, item) {
 	switch (item)
 	{
-		case 0:	//RESTART
+		case 0:	//Mark Frame
 		{
-			if(gc_bot_id) bot_restart_c();
-			else ReadBestRunFile_c();
+			gc_bot_mark_frame = gc_bot_frame;
 			ClCmd_ReplayMenu_c(id);
 		}
-		case 1:	//PLAY
+		case 1:	//GO Mark Frame
 		{
-			if (gc_bot_enable && gc_bot_id)
-			{
-				Pause_bot_c();
-			}
+			gc_bot_frame = gc_bot_mark_frame;
 			ClCmd_ReplayMenu_c(id);
 		}
 		case 2:	//PLAY TYPE
@@ -7094,14 +7155,45 @@ public ClCmd_ReplayMenuHandler_c(id, menu, item) {
 			if(!gc_bot_pause) gc_bot_sum_compensated_time += gc_bot_cur_compensated_time;	// 播放速度发生变化 则立刻累计本时段内时间差; 暂停时不用补偿
 			ClCmd_ReplayMenu_c(id);
 		}
-		case 4:	//KICK BOT
+		case 4:	//INTERVALS
+		{
+			if(gc_bot_interval > 0) gc_bot_interval += 5;
+			else gc_bot_interval -= 5;
+			if(gc_bot_interval > 30) gc_bot_interval = -5;
+			else if(gc_bot_interval < -30) gc_bot_interval = 5;
+			ClCmd_ReplayMenu_c(id);
+		}
+		case 5:	//SKip Interval
+		{
+			new authid[32];
+			new maxFps = 99.5;
+			get_user_authid(id, authid, 31);
+			if (equal(authid, "VALVE_ID_LAN") || equal(authid, "STEAM_ID_LAN")) maxFps = 101;
+			gc_bot_frame += gc_bot_interval * maxFps;
+			ClCmd_ReplayMenu_c(id);
+		}
+		case 6:	//GO [Pro]BOT MENU
+		{
+			ClCmd_ReplayMenu(id);
+		}
+		case 7:	//RESTART
+		{
+			if(gc_bot_id) bot_restart_c();
+			else ReadBestRunFile_c();
+			ClCmd_ReplayMenu_c(id);
+		}
+		case 8:	//PLAY
+		{
+			if (gc_bot_enable && gc_bot_id)
+			{
+				Pause_bot_c();
+			}
+			ClCmd_ReplayMenu_c(id);
+		}
+		case 9:	//KICK BOT
 		{
 			Remove_Bot_c();
 			ClCmd_ReplayMenu_c(id);
-		}
-		case 5:	//GO [Pro]BOT MENU
-		{
-			ClCmd_ReplayMenu(id);
 		}
 		default:
 		{
