@@ -3597,14 +3597,20 @@ public timer_task()
 			{
 				if( ShowTime[Alive[i]] == 1)	//TXT TIME
 				{
-					if(HealsOnMap)
-					{
-						format(output, 127, "[ %02d:%s%.2f | %d/%d | HP: Godmode %s]",imin,isec < 10 ? "0" : "",isec,checknumbers[Alive[i]], gochecknumbers[Alive[i]], /*get_user_health(Alive[i]),*/ IsPaused[Alive[i]] ? "| *Paused* " : "");
-					}
-					else 
-					{
-						format(output, 127, "[ %02d:%s%.2f | %d/%d | HP: %d %s]", imin,isec < 10 ? "0" : "",isec,checknumbers[Alive[i]], gochecknumbers[Alive[i]], get_user_health(Alive[i]), IsPaused[Alive[i]] ? "| *Paused* " : "");
-					}
+					// if(HealsOnMap)
+					// {
+					// 	format(output, 127, "[ %02d:%s%.2f | %d/%d | HP: Godmode %s]",imin,isec < 10 ? "0" : "",isec,checknumbers[Alive[i]], gochecknumbers[Alive[i]], /*get_user_health(Alive[i]),*/ IsPaused[Alive[i]] ? "| *Paused* " : "");
+					// }
+					// else 
+					// {
+					// 	format(output, 127, "[ %02d:%s%.2f | %d/%d | HP: %d %s]", imin,isec < 10 ? "0" : "",isec,checknumbers[Alive[i]], gochecknumbers[Alive[i]], get_user_health(Alive[i]), IsPaused[Alive[i]] ? "| *Paused* " : "");
+					// }
+					if(REC_AC[Alive[i]] && !IsPaused[Alive[i]])
+						format(output, 127, "[ %02d:%s%.2f | %d/%d | HP: %d %s]", imin, isec < 10 ? "0" : "", isec, checknumbers[Alive[i]], gochecknumbers[Alive[i]], get_user_health(Alive[i]), "| Recording... ");
+					else if(!REC_AC[Alive[i]])
+						format(output, 127, "[ %02d:%s%.2f | %d/%d | HP: %d %s]", imin, isec < 10 ? "0" : "", isec, checknumbers[Alive[i]], gochecknumbers[Alive[i]], get_user_health(Alive[i]), "| *Not Recording* ");
+					else if(IsPaused[Alive[i]])
+						format(output, 127, "[ %02d:%s%.2f | %d/%d | HP: %d %s]", imin, isec < 10 ? "0" : "", isec, checknumbers[Alive[i]], gochecknumbers[Alive[i]], get_user_health(Alive[i]), "| *Paused* ");
 				}
 				else if( ShowTime[Alive[i]] == 2) //HUD TIME
 				{
@@ -6721,7 +6727,7 @@ public Savepos_menu_handler(id, menu, item)
 			}
 			else
 			{
-				kz_chat(id, "您必须或者才能使用此功能")
+				kz_chat(id, "您必须活着才能使用此功能")
 				Savepos_menu(id)
 			}
 		}
@@ -8410,6 +8416,7 @@ stock kz_showhtml_motd(id, type, const map[])
 
 public ProTop_update(id, Float:time)
 {
+	if(is_user_bot(id)) return;
 	new authid[32], name[32], thetime[32],ip[32], country[3], Float: slower, Float: faster, Float:protiempo
 	get_user_name(id, name, 31);
 	get_user_authid(id, authid, 31);
@@ -8433,7 +8440,7 @@ public ProTop_update(id, Float:time)
 	
 	for (new i = 0; i < num; i++)
 	{	
-		if( time < Pro_Times[i])	// 玩家新的跳跃成绩比之前自己的成绩快 需要找到其在多少行
+		if( time < Pro_Times[i])	// 将当前完成玩家成绩和pro__.cfg文件中记录的其他玩家成绩逐个比较 找到当前成绩的排名
 		{
 			new pos = i
 			if ( get_pcvar_num(kz_top15_authid) == 0 )
@@ -8446,7 +8453,7 @@ public ProTop_update(id, Float:time)
 				{
 					pos++;
 				}
-			
+			// 将 i + 1 ~ pos 行的成绩均往后挪动1行 方便当前成绩的插入
 			for (new j = pos; j > i; j--)
 			{
 				formatex(Pro_AuthIDS[j], 31, Pro_AuthIDS[j-1]);
@@ -8456,6 +8463,7 @@ public ProTop_update(id, Float:time)
 				Pro_Times[j] = Pro_Times[j-1];
 			}
 			
+			// 插入当前成绩 在第i行
 			formatex(Pro_AuthIDS[i], 31, authid);
 			formatex(Pro_Names[i], 31, name);
 			formatex(Pro_Country[i], 3, country)
@@ -8465,37 +8473,35 @@ public ProTop_update(id, Float:time)
 			save_pro15();
 			read_pro15();
 			
-			if( Is_in_pro15 )	//完成时 原本就在pro15中
-			{
-				if (!is_user_bot (id))
-					
-				if( time < protiempo )
+			if( Is_in_pro15 )	//完成时 原本就在pro15中 需要显示成绩提高了多少?
+			{		
+				if( time < protiempo )	// 当前成绩比之前成绩更好
 				{
 					new min, Float:sec;
 					min = floatround(faster, floatround_floor)/60;
 					sec = faster - (60*min);
 					ColorChat(id, GREEN,  "%s^x01 %L ^x03%02d:%s%.2f^x01", prefix, id, "KZ_IMPROVE", min, sec < 10 ? "0" : "", sec);
 				
-					if( (i + 1) == 1)	// i==0
+					if( (i + 1) == 1)	// i == 0 当前成绩为全图最佳
 					{
-						if( time < DiffWRTime[0])
+						if( time < DiffWRTime[0])	// WR
 						{
 							client_cmd(0, "spk misc/mod_godlike");
 						}
 						else
 						{
 							// client_cmd(0, "spk kzsound/toprec");
-							client_cmd(0, "spk misc/mod_unstopable");
+							client_cmd(0, "spk misc/mod_unstopable");	// SR
 						}
-						// ################################################
-						// # 需要修的BUG: 1 BOT计时每次循环后不清空 2 多次按下计时器时不会重置保存的数据 3 暂停无法暂停状态的记录(√)
 						if (REC_AC[id])
 						{
-							if (g_bestruntime < Pro_Times[id])
-							{
-								client_print(0, 2, "REC %f UPDATE %f", g_bestruntime, time);
-								ClCmd_UpdateReplay(id, time);
-							}
+							// client_print(0, print_chat, "g_bestruntime: %f, time: %f, Pro_Times[id]: %f", g_bestruntime, time, Pro_Times[id]);
+							// if (g_bestruntime < Pro_Times[id])
+							// {
+							// 	client_print(0, print_chat, "REC %f UPDATE %f", g_bestruntime, time);
+							// 	ClCmd_UpdateReplay(id, time);
+							// }
+							ClCmd_UpdateReplay(id, time);
 						}
 
 						ColorChat(0, RED,  "^x01%s^x01^x03 %s^x01 %L^x03 1^x01 in ^x03Professional^x01", prefix, name, LANG_PLAYER, "KZ_PLACE");
@@ -8512,12 +8518,13 @@ public ProTop_update(id, Float:time)
 				if( (i + 1) == 1) 
 				{
 					// ##SR
+					// client_cmd(0, "spk kzsound/toprec");
+					client_cmd(0, "spk misc/mod_unstopable");
 					if (REC_AC[id])
 					{
+						// client_print(0, print_chat, "No in pro15");
 						ClCmd_UpdateReplay(id, time);
-					}
-					// client_cmd(0, "spk kzsound/toprec");
-					client_cmd(0, "spk misc/mod_unstopable");				
+					}			
 					ColorChat(0, RED,  "^x01%s^x01^x03 %s^x01 %L^x03 1^x01 in ^x03Professional^x01", prefix, name, LANG_PLAYER, "KZ_PLACE");
 				}
 				else // 非SR
@@ -8526,10 +8533,10 @@ public ProTop_update(id, Float:time)
 					ColorChat(0, GREEN,  "^x01%s^x01^x03 %s^x01 %L^x03 %d^x01 in ^x04Pro 100^x01", prefix, name, LANG_PLAYER, "KZ_PLACE", (i+1));
 				}
 			}
-			
 			return;
 		}
 
+		// 当前成绩比当前行成绩差 判断是不是比该玩家之前的成绩差 是则KZ_SLOWER并返回
 		if( (equali(Pro_Names[i], name) && (get_pcvar_num(kz_top15_authid) == 0)) || (equali(Pro_AuthIDS[i], authid) && (get_pcvar_num(kz_top15_authid) == 1)) )
 		{
 			if( time > protiempo )
@@ -8674,7 +8681,6 @@ public NoobTop_update(id, Float:time, checkpoints, gochecks)
 			read_Noob15();		
 			if( Is_in_noob15 )
 			{
-
 				if( time < noobtiempo )
 				{
 					new min, Float:sec;
@@ -8686,11 +8692,12 @@ public NoobTop_update(id, Float:time, checkpoints, gochecks)
 					{
 						if (REC_AC[id])
 						{
-							if (gc_bestruntime < Noob_Tiempos[id])
-							{
-								client_print(0, 2, "NUB %f UPDATE %f", gc_bestruntime, time);
-								ClCmd_UpdateReplay_c(id, time);
-							}
+							// if (gc_bestruntime < Noob_Tiempos[id])
+							// {
+							// 	client_print(0, 2, "NUB %f UPDATE %f", gc_bestruntime, time);
+							// 	ClCmd_UpdateReplay_c(id, time);
+							// }
+							ClCmd_UpdateReplay_c(id, time);
 						}
 						client_cmd(0, "spk woop");
 						ColorChat(0, GREEN,  "^x01%s^x01^x03 %s^x01 %L^x03 1^x01 in ^x04Noob 100^x01", prefix, name, LANG_PLAYER, "KZ_PLACE");
@@ -9463,7 +9470,7 @@ public tskShowSpec()
 						show_hudmessage(i, szHud_toAlive);
 					if(!is_user_alive(i))	// 给观战的人发送szHud_toDead
 						show_hudmessage(i, szHud_toDead);
-					// client_print(0, print_chat, "show_hudmessage......");
+					// client_print(0, pri t_chat, "show_hudmessage......");
 					// client_print(0, print_chat, "szHud_toAlive: %s", szHud_toAlive);
 				}
 			}
