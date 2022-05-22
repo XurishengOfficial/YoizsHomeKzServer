@@ -175,7 +175,7 @@ new const g_szAliveFlags[] = "a"
 #define UPDATEINTERVAL_SPECLIST 0.5
 
 // UpdateGameName
-new szGameName[16]
+new szGameName[32]
 //.
 
 //Top 100
@@ -456,7 +456,7 @@ new gochecknumbers[33]
 new chatorhud[33]
 new ShowTime[33]
 new MapName[64]
-new MapInfo[16];
+new MapInfo[32];
 new Kzdir[128]
 new SavePosDir[128]
 new prefix[33]
@@ -6371,9 +6371,9 @@ public kz_menu(id)
 		return PLUGIN_HANDLED;
 	}
 	
-	new title[256];
+	new title[512];
 	//---------
-	new maptype[16];
+	new maptype[32];
 	new thetime[64];
 	new isMapFound = false;
 	get_time("%Y/%m/%d - %H:%M:%S",thetime,63)
@@ -6407,9 +6407,7 @@ public kz_menu(id)
 	if(!isMapFound)	formatex(MapInfo, charsmax(MapInfo), "Unknown");
 	new hostName[64];
 	get_cvar_string( "hostname", hostName, charsmax(hostName) );
-	
-	formatex(title, 285, "\r#%s ^n\dBased on \yProkreedz V2.31 \d Edited by \yAzuki daisuki~^n\dPresent time %s^nMap \y%s\d & Timeleft \y%d:%02d^n\dType map \y%s", hostName, thetime, MapName, tl/60, tl%60, MapInfo);
-	// formatex(title, 285, "\d[xiaokz] \r#KZ Server \dVisit \ywww.csxiaokz.com ^n\rQQ群:719383105^n\dBeiJing time \y%s^n\dMap \y%s\d & Timeleft \y%d:%02d^n\dType map \y%s", thetime, MapName, tl / 60, tl % 60, MapInfo);
+	formatex(title, charsmax(title), "\r#%s ^n\dBased on \yProkreedz V2.31 \d Edited by \yAzuki daisuki~^n\dPresent time %s^nMap \y%s\d & Timeleft \y%d:%02d^n\dType map \y%s", hostName, thetime, MapName, tl/60, tl%60, MapInfo);
 	
 	new menu = menu_create(title, "MenuHandler")  
 	new msgctspec[64];
@@ -7417,7 +7415,7 @@ public choose(id, menu, item)
 	}
 	
 	new command[6], name[64], access, callback
-	new mapsmode[33]
+	new mapsmode[16]
 
 	menu_item_getinfo(menu, item, access, command, sizeof command - 1, name, sizeof name - 1, callback)
 
@@ -7426,19 +7424,19 @@ public choose(id, menu, item)
 		case 0..6:	//设置多个选项0-?
 		{
 			if(item==0)
-			format(mapsmode,32,"Bhop")
+			formatex(mapsmode, charsmax(mapsmode),"Bhop")
 			else if(item==1)
-			format(mapsmode,32,"Climb")
+			formatex(mapsmode, charsmax(mapsmode),"Climb")
 			else if(item==2)
-			format(mapsmode,32,"Bhop/Climb")
+			formatex(mapsmode, charsmax(mapsmode),"Bhop/Climb")
 			else if(item==3)
-			format(mapsmode,32,"Longjumps")
+			formatex(mapsmode, charsmax(mapsmode),"Longjumps")
 			else if(item==4)
-			format(mapsmode,32,"Slide")
+			formatex(mapsmode, charsmax(mapsmode),"Slide")
 			else if(item==5)
-			format(mapsmode,32,"DeathRun")			
+			formatex(mapsmode, charsmax(mapsmode),"DeathRun")			
 			else if(item==6)
-			format(mapsmode,32,"Axn")
+			formatex(mapsmode, charsmax(mapsmode),"Axn")
 		
 			ColorChat(id, GREEN, "^1%s ^3%s ^1Set Type: ^3%s",prefix, MapName,mapsmode)
 			formatex(MapInfo, charsmax(MapInfo), "%s", mapsmode);
@@ -7447,6 +7445,84 @@ public choose(id, menu, item)
 
 	}
 	menu_destroy(menu)
+	// Difficulty Menu
+	new diffMenuTitle[64];
+	formatex(diffMenuTitle, charsmax(diffMenuTitle), "\y%s \r%s \dMaps Difficulty Menu", prefix, MapName);
+	new difMenu = menu_create(diffMenuTitle, "mapDiffMenuHandler");
+	menu_additem( difMenu, "Easy", 		"1" )
+	menu_additem( difMenu, "Average", 	"2" )
+	menu_additem( difMenu, "Hard", 		"3" )
+	menu_additem( difMenu, "Elite", 	"4" )
+	menu_additem( difMenu, "Extreme", 	"5" )
+	menu_additem( difMenu, "Death", 	"6" )
+
+	// 设置退出选项红色
+	new exitOption[16];
+	formatex(exitOption, charsmax(exitOption),"\rExit")
+	menu_setprop( difMenu, MPROP_EXITNAME, exitOption)
+	// 设置选项前数字红色
+	menu_setprop(difMenu, MPROP_NUMBER_COLOR, "\y");
+	menu_display(id, difMenu, 0)
+	return PLUGIN_HANDLED
+}
+
+public mapDiffMenuHandler(id, menu, item)
+{
+	if(item == MENU_EXIT)
+	{
+		menu_destroy(menu);
+		return PLUGIN_HANDLED;
+	}
+	new mapDiff[16];
+	switch(item)
+	{
+		case 0: formatex(mapDiff, charsmax(mapDiff), "Easy");
+		case 1: formatex(mapDiff, charsmax(mapDiff), "Average");
+		case 2: formatex(mapDiff, charsmax(mapDiff), "Hard");
+		case 3: formatex(mapDiff, charsmax(mapDiff), "Elite");
+		case 4: formatex(mapDiff, charsmax(mapDiff), "Extreme");
+		case 5: formatex(mapDiff, charsmax(mapDiff), "Death");
+	}
+	ColorChat(id, GREEN, "^1%s ^3%s ^1Set Difficulty: ^3%s",prefix, MapName, mapDiff)
+	format(MapInfo, charsmax(MapInfo), "%s(%s)", MapInfo, mapDiff);
+	save_information(MapName, MapInfo);
+	menu_destroy(menu);
+	// Map Size Menu
+	new sizeMenuTitle[64];
+	formatex(sizeMenuTitle, charsmax(sizeMenuTitle), "\y%s \r%s \dMaps Size Menu", prefix, MapName);
+	new sizeMenu = menu_create(sizeMenuTitle, "mapSizeMenuHandler");
+	menu_additem( sizeMenu, "Small", 		"1" )
+	menu_additem( sizeMenu, "Medium", 		"2" )
+	menu_additem( sizeMenu, "Big", 			"3" )
+	menu_additem( sizeMenu, "Very Big", 	"4" )
+
+	new exitOption[16];
+	formatex(exitOption, charsmax(exitOption),"\rExit")
+	menu_setprop( sizeMenu, MPROP_EXITNAME, exitOption)
+	menu_setprop( sizeMenu, MPROP_NUMBER_COLOR, "\y")
+	menu_display( id, sizeMenu, 0)
+	return PLUGIN_HANDLED
+}
+
+public mapSizeMenuHandler(id, menu, item)
+{
+	if(item == MENU_EXIT)
+	{
+		menu_destroy(menu);
+		return PLUGIN_HANDLED;
+	}
+	new mapSize[16];
+	switch(item)
+	{
+		case 0: formatex(mapSize, charsmax(mapSize), "Small");
+		case 1: formatex(mapSize, charsmax(mapSize), "Medium");
+		case 2: formatex(mapSize, charsmax(mapSize), "Big");
+		case 3: formatex(mapSize, charsmax(mapSize), "Very Big");
+	}
+	ColorChat(id, GREEN, "^1%s ^3%s ^1Set Map Size: ^3%s",prefix, MapName, mapSize)
+	format(MapInfo, charsmax(MapInfo), "%s(%s)", MapInfo, mapSize);
+	save_information(MapName, MapInfo);
+	menu_destroy(menu);
 	return PLUGIN_HANDLED
 }
 
