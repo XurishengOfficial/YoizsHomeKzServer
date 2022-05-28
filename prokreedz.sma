@@ -706,7 +706,7 @@ public plugin_init()
 	kz_sql_files = register_cvar("kz_sql_files", "") // Path of the PHP files
 	#else
 	// kz_webtop_url = register_cvar("kz_webtop_url", "http://60.205.191.245/amxmodx/kz/")		//My Servers by Perfectslife
-	kz_webtop_url = register_cvar("kz_webtop_url", "")		//Top URL http://....
+	kz_webtop_url = register_cvar("kz_webtop_url", "")		//Top URL http://....	kreedz.cfg
 	#endif
 
 	register_clcmd("test1","ReadBestRunFile")
@@ -6391,7 +6391,7 @@ public kz_menu(id)
 		// parse( data, map, charsmax(map), maptype, charsmax(maptype));
 		strtok(data, map, charsmax(map), maptype, charsmax(maptype),' ')	
 		trim(map);
-		trim(maptype);	// 去除空格
+		trim(maptype);	// 去除首尾空格
 
 		if( equali( map, MapName ) )
 		{			
@@ -7484,7 +7484,7 @@ public mapDiffMenuHandler(id, menu, item)
 		case 5: formatex(mapDiff, charsmax(mapDiff), "Death");
 	}
 	ColorChat(id, GREEN, "^1%s ^3%s ^1Set Difficulty: ^3%s",prefix, MapName, mapDiff)
-	format(MapInfo, charsmax(MapInfo), "%s(%s)", MapInfo, mapDiff);
+	format(MapInfo, charsmax(MapInfo), "%s (%s)", MapInfo, mapDiff);
 	save_information(MapName, MapInfo);
 	menu_destroy(menu);
 	// Map Size Menu
@@ -7520,7 +7520,7 @@ public mapSizeMenuHandler(id, menu, item)
 		case 3: formatex(mapSize, charsmax(mapSize), "Very Big");
 	}
 	ColorChat(id, GREEN, "^1%s ^3%s ^1Set Map Size: ^3%s",prefix, MapName, mapSize)
-	format(MapInfo, charsmax(MapInfo), "%s(%s)", MapInfo, mapSize);
+	format(MapInfo, charsmax(MapInfo), "%s (%s)", MapInfo, mapSize);
 	save_information(MapName, MapInfo);
 	menu_destroy(menu);
 	return PLUGIN_HANDLED

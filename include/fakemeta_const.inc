@@ -288,8 +288,8 @@ enum {
 	pev_gamestate,
 	pev_oldbuttons,
 	pev_groupinfo,
-	pev_iuser1,
-	pev_iuser2,
+	pev_iuser1,	// 1-锁定追逐 2-自由追逐 3-自由查看 4-第一视角 5-自由总览 6-追逐总览地图视角
+	pev_iuser2,	// 被观看玩家id
 	pev_iuser3,
 	pev_iuser4,
 	pev_int_end,
