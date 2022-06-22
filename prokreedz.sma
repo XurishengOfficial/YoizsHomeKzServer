@@ -500,6 +500,8 @@ new kz_save_autostart
 new kz_top15_authid
 new Sbeam = 0
 
+new jumpMenuId = -1;
+
 
 stock is_user_vip(id) { return get_user_flags(id) & KZ_LEVEL_VIP; }
 stock is_user_kz_admin(id) { return get_user_flags(id) & KZ_LEVEL; }
@@ -722,6 +724,7 @@ public plugin_init()
 	register_clcmd("/gc", "GoCheck")
 	register_clcmd("/tp", "GoCheck")
 	register_clcmd("/gcf","GoCheck")
+	register_clcmd("/jumpMenu","JumpMenu")
 	// register_clcmd("/gcf","GoCheck")
 	register_clcmd("+hook","hook_on",KZ_LEVEL)
 	register_clcmd("-hook","hook_off",KZ_LEVEL)	
@@ -1129,42 +1132,8 @@ public plugin_precache()
 	Sbeam = precache_model("sprites/laserbeam.spr")
 }
 
-public test3(id) {
-	// server_print("g_CheckPointArray size is %d", ArraySize(g_CheckPointArray[id]));
-	// mapcycle.txt
-	// read_pro15();
-	for(new i = 1; i <= gMaxPlayers; ++i) {
-		if(!is_user_connected(i) || is_user_bot(i)) continue;
-		new authId[64];
-		new name[64];
-		new Pro_Time[64];
-		new Pro_Rank;
-		new Nub_Time[64];
-		new Nub_Rank;
-		get_user_name(i, name, charsmax(name));
-		get_user_authid(i, authId, charsmax(authId));
-
-		// Pro Trier
-		new isExist = TrieKeyExists(STEAMID_PRO_TIMES, authId);
-		if(isExist) {
-			TrieGetString(STEAMID_PRO_TIMES, authId, Pro_Time, charsmax(Pro_Time));
-			TrieGetCell(STEAMID_PRO_RANK, authId, Pro_Rank);
-			server_print("[PRO]%s		%s		%s	#%d", name, authId, Pro_Time, Pro_Rank);
-		}
-		else 
-			server_print("[PRO]%s		%s		No record", name, authId );
-
-		// Nub Trier
-		isExist = TrieKeyExists(STEAMID_NUB_TIMES, authId);
-		if(isExist) {
-			TrieGetString(STEAMID_NUB_TIMES, authId, Nub_Time, charsmax(Nub_Time));
-			TrieGetCell(STEAMID_NUB_RANK, authId, Nub_Rank);
-			server_print("[NUB]%s		%s		%s	#%d", name, authId, Nub_Time, Nub_Rank);
-		}
-		else 
-			server_print("[NUB]%s		%s		No record", name, authId);
-
-	}
+public test3() {
+	return false;
 }
 public plugin_cfg()
 {
@@ -1678,14 +1647,38 @@ public ReadBestRunFile_c()
 	bot_restart_c();
 	return PLUGIN_HANDLED;
 }
+
+bool:is_server_full()
+{
+	new iPlayers;
+	new iMax = get_maxplayers();
+	new id = 1;
+	while (id < iMax)
+	{
+		if (is_user_connected(id))
+		{
+			iPlayers++;
+		}
+		id++;
+	}
+	return iPlayers >= iMax;
+}
 public bot_restart()
 {
 	if (g_fileRead)
 	{
 		if(!g_bot_id)
-     		g_bot_id = Create_Bot(); // Создает бота с id
+		{
+			if(is_server_full()) 
+			{
+				client_print(0, print_chat, "Server is Full");
+				return	
+			}
+			g_bot_id = Create_Bot(); // Создает бота с id
+		}
 		Start_Bot();
 	}
+	return;
 }
 
 public bot_restart_c()
@@ -1693,10 +1686,17 @@ public bot_restart_c()
 	if (gc_fileRead)
 	{
 		if (!gc_bot_id)
+		{
+			if(is_server_full())
+			{
+				client_print(0, print_chat, "Server is Full");
+				return
+			} 
 			gc_bot_id = Create_Bot_c();
+		}
 		Start_Bot_c();
 	}
-	return 0;
+	return;
 }
 
 Create_Bot()
@@ -1854,10 +1854,14 @@ public Pause_bot_c()
 Remove_Bot()
 {
 	server_cmd("kick #%d", get_user_userid(g_bot_id))
+	// reset Pro Bot Play vars
 	g_bot_id = 0;
 	g_bot_enable = 0;
 	g_bot_frame = 0;
 	g_bot_pause = false;
+	g_bot_interval = 5;
+	g_bot_speed = 1;
+	g_bot_mark_frame = 0;
 	ArrayClear(g_DemoPlaybot[0]);
 }
 
@@ -1868,6 +1872,9 @@ Remove_Bot_c()
 	gc_bot_enable = 0;
 	gc_bot_frame = 0;
 	gc_bot_pause = false;
+	gc_bot_interval = 5;
+	gc_bot_speed = 1;
+	gc_bot_mark_frame = 0;
 	ArrayClear(gc_DemoPlaybot[0]);
 	return 0;
 }
@@ -6777,7 +6784,18 @@ public JumpMenu(id)
 	// menu_vadditem(menu, "6", _, _, "%L^n", id, "KZ_JUMPMENU_MENU7")
 	// menu_additem( menu, "Usp/Knife", "7")
 	menu_display(id, menu, 0)
-	
+	// 获取JumpMenu的id并保存
+	new menuid, keys;
+	get_user_menu(id, menuid, keys);
+	jumpMenuId = menuid;
+	// client_print(id, print_chat, "%d", menuid);	
+	// 后续用于鉴别是否打开了Kz菜单
+	// new oldMenuId, newMenuId;
+    // player_menu_info(id, oldMenuId, newMenuId)
+    // if( newMenuId > -1 && newMenuId == YOUR_MENU )
+    // {
+    //     menu_cancel(id)
+    // } 
 	return PLUGIN_HANDLED 
 }
 
@@ -6826,6 +6844,13 @@ public JumpMenuHandler(id , menu, item)
 		}
 	}
 	return PLUGIN_HANDLED
+}
+
+public bool:isJumpMenuOpened(id) {
+	new curKeys, curMenuId;
+	get_user_menu(id, curMenuId, curKeys);
+	if(jumpMenuId < 0) return false;
+	return jumpMenuId == curMenuId;
 }
 
 //============================================================================
@@ -6892,10 +6917,16 @@ public AdminMenuHandler (id, menu, item, level, cid)
 				AdminMenu(id);
 				return PLUGIN_HANDLED
 			}
-			if(callfunc_begin("Command_StartVote","xmap_manager.amxx") == 1) 	//startvote
+			if(callfunc_begin("StartVote","kz_map_manager2.amxx") == 1) 	//startvote
 			{
-				callfunc_push_int(id)
+				// callfunc_push_int(id)
 				callfunc_end()
+				new szName[32];
+				get_user_name(id, szName, charsmax(szName));
+				if(is_user_kz_admin(id) || is_user_main_admin(id))
+					ColorChat(0, Color:5, "^x04%s^x01 Admin: ^x03%s^x01 Force^x04 Start the Vote.", prefix, szName);
+				else if(is_user_vip(id))
+					ColorChat(0, Color:5, "^x04%s^x01 VIP: ^x03%s^x01 Force^x04 Start the Vote.", prefix, szName);
 			}	
 		}
 		case 3:
@@ -6906,9 +6937,9 @@ public AdminMenuHandler (id, menu, item, level, cid)
 				return PLUGIN_HANDLED
 			}
 			client_cmd(id, "messagemode amx_map");
-			ColorChat(id, Color:5, "^x04%s ^x01请输入^x03地图名...", prefix);
-			ColorChat(id, Color:5, "^x04%s ^x01请输入^x03地图名...", prefix);
-			ColorChat(id, Color:5, "^x04%s ^x01请输入^x03地图名...", prefix);
+			ColorChat(id, Color:5, "^x04%s^x01 请输入^x03 地图名...", prefix);
+			ColorChat(id, Color:5, "^x04%s^x01 请输入^x03 地图名...", prefix);
+			ColorChat(id, Color:5, "^x04%s^x01 请输入^x03 地图名...", prefix);
 		}
 		case 4:
 		{
@@ -7018,7 +7049,8 @@ public ClCmd_ReplayMenuHandler(id, menu, item) {
 		}
 		case 1:	//GO Mark Frame
 		{
-			g_bot_frame = g_bot_mark_frame;
+			if(g_bot_mark_frame != 0) 
+				g_bot_frame = g_bot_mark_frame;
 			ClCmd_ReplayMenu(id);
 		}
 		case 2:	//PLAY TYPE
@@ -7028,7 +7060,7 @@ public ClCmd_ReplayMenuHandler(id, menu, item) {
 		}
 		case 3:	// PLAY SPEED
 		{
-			if(g_bot_speed == 16) g_bot_speed = 1;
+			if(abs(g_bot_speed) >= 16) g_bot_speed = g_bot_speed > 0 ? 1 : -1;
 			else g_bot_speed *= 2;
 			g_bot_fastforwardtime = get_gametime();
 			if(!g_bot_pause) g_bot_sum_compensated_time += g_bot_cur_compensated_time;	// 播放速度发生变化 则立刻累计本时段内时间差
@@ -7137,7 +7169,8 @@ public ClCmd_ReplayMenuHandler_c(id, menu, item) {
 		}
 		case 1:	//GO Mark Frame
 		{
-			gc_bot_frame = gc_bot_mark_frame;
+			if(gc_bot_frame != 0)
+				gc_bot_frame = gc_bot_mark_frame;
 			ClCmd_ReplayMenu_c(id);
 		}
 		case 2:	//PLAY TYPE
@@ -7292,7 +7325,7 @@ public handleServerMenu(id, item)
 }
 	
 // --------------------------------------------------------------------------------
-
+// 购买区域icon
 public Msg_StatusIcon(msgid, msgdest, id)
 {
 	static szMsg[8];
