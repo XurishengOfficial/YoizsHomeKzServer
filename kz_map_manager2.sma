@@ -37,6 +37,7 @@ new g_pRockPercent;
 new bool:g_bRockVoted[33];
 new g_iRockNum;
 new g_iRandomNum[5];	// 5个随机数
+new g_iRtvMenuId = 0;
 
 stock is_user_vip(id) { return get_user_flags(id) & KZ_LEVEL_VIP; }
 
@@ -312,7 +313,8 @@ public plugin_init() {
 	g_bVoteFinished = false;
 	g_iWinner = -1;
 	set_task(1.0, "taskStartVote", 1100, _, _, "b", _);	// 每秒执行该函数
-	register_menucmd(register_menuid("MapMenu", 0), 1023, "handleMapMenu");	//0~9十个键位
+	g_iRtvMenuId = register_menuid("MapMenu", 0);
+	register_menucmd(g_iRtvMenuId, 1023, "handleMapMenu");	//0~9十个键位 1023 = (1111111111)2
 }
 
 public client_putinserver(id)
@@ -688,7 +690,7 @@ public handleMapMenu(id, item)
 		}
 		case 9: // 管理员取消
 		{
-			if(!is_user_vip(id))
+			if(!is_user_vip(id))	// 非VIO or Admin Do not want to Vote
 			{
 				if(task_exists(id + 1200))
 					remove_task(id + 1200);
@@ -700,13 +702,14 @@ public handleMapMenu(id, item)
 			new iPlayer;
 			get_players(players, pnum);	// 获取在线玩家索引列表并保存在数组players[] pnum为实际玩家数
 			new i;
-			// 移除每个玩家的菜单显示
+			// 移除每个玩家的菜单显示并显示空菜单
 			while (i < pnum) {
 				iPlayer = players[i];
 				if (is_user_connected(iPlayer) && !is_user_bot(iPlayer))
 				{
 					if (task_exists(iPlayer + 1200))
 						remove_task(iPlayer + 1200);
+					show_menu(iPlayer, 0, "^n", -1); // 显示空菜单 防止取消后还可以选择(虽然选取也无效)
 				}
 				if (g_bKZMenuOpened[iPlayer]) client_cmd(iPlayer, "/jumpMenu");
 				++i;
