@@ -171,6 +171,7 @@ public readMapCycle()
 	new szData[50];
 	new iMaps;
 	new iCurMap;
+	ArrayClear(g_aAllMaps);
 	new f = fopen(g_szMapCycle, "rt");
 	while (!feof(f))
 	{
@@ -219,6 +220,7 @@ public cmdUpdateMapList(id)
 {
 	if(get_user_flags(id) & KZ_LEVEL || is_user_localhost(id))
 	{
+		findMaps();
 		readMapCycle();
 	}
 	else
@@ -392,7 +394,7 @@ public cmdRTV(id)
 	{
 		if(g_iRockNum < needRockNum)
 		{
-			ColorChat(0, GREEN, "^x04[%s] ^1You have been rocked the vote.", g_szPrefix);
+			ColorChat(id, GREEN, "^x04[%s] ^1You have been rocked the vote.", g_szPrefix);
 			return 1;
 		}
 			
@@ -823,17 +825,6 @@ stock bool:remove_nominated_map(id, map[])
 
 public Command_Say(id)
 {
-	
-	if (g_bVoteStarted)
-	{
-		ColorChat(id, GREEN, "^x04[%s]^x01 Voting Has been started.Cannot nominate Maps.", g_szPrefix);
-		return 0;
-	}
-	if (g_bVoteFinished)
-	{
-		ColorChat(id, GREEN, "^x04[%s]^x01 Voting Has Finished. Cannot nominate Maps.", g_szPrefix);
-		return 0;
-	}
 	new szText[33];
 	read_args(szText, charsmax(szText));	// 以字符串形式读取所有参数
 	remove_quotes(szText);	// 删去引号
@@ -841,6 +832,17 @@ public Command_Say(id)
 	strtolower(szText);		// 全转成小写
 	if (in_maps_array(szText))
 	{
+		// 开始投票和投票完成后不能进行提名
+		if (g_bVoteStarted)
+		{
+			ColorChat(id, GREEN, "^x04[%s]^x01 Voting Has been started.Cannot nominate Maps.", g_szPrefix);
+			return 0;
+		}
+		if (g_bVoteFinished)
+		{
+			ColorChat(id, GREEN, "^x04[%s]^x01 Voting Has Finished. Cannot nominate Maps.", g_szPrefix);
+			return 0;
+		}
 		if (g_iNominatedMaps[id] && is_map_nominated(szText)) // 自己提名自己删
 		{
 			if(remove_nominated_map(id, szText))

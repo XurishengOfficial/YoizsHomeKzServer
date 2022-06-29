@@ -7077,10 +7077,11 @@ public ClCmd_ReplayMenuHandler(id, menu, item) {
 		case 5:	//SKip Interval
 		{
 			new authid[32];
-			new maxFps = 99.5;
+			new maxFps = 100;
 			get_user_authid(id, authid, 31);
 			if (equal(authid, "VALVE_ID_LAN") || equal(authid, "STEAM_ID_LAN")) maxFps = 101;
 			g_bot_frame += g_bot_interval * maxFps;
+			g_bot_sum_compensated_time += g_bot_interval;
 			ClCmd_ReplayMenu(id);
 		}
 		case 6:	//GO [NUB]BOT MENU
@@ -7197,9 +7198,10 @@ public ClCmd_ReplayMenuHandler_c(id, menu, item) {
 		case 5:	//SKip Interval
 		{
 			new authid[32];
-			new maxFps = 99.5;
+			new maxFps = 100;
 			get_user_authid(id, authid, 31);
 			if (equal(authid, "VALVE_ID_LAN") || equal(authid, "STEAM_ID_LAN")) maxFps = 101;
+			gc_bot_sum_compensated_time += gc_bot_interval;
 			gc_bot_frame += gc_bot_interval * maxFps;
 			ClCmd_ReplayMenu_c(id);
 		}
