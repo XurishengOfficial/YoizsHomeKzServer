@@ -606,9 +606,6 @@ new Array:g_DemoPlaybot[1];
 new Array:g_DemoReplay[33];
 new Float:g_ReplayBestRunTime;
 new Float:g_bestruntime;
-new Float:g_bot_cur_compensated_time = 0.0;
-new Float:g_bot_sum_compensated_time = 0.0;
-new Float:g_bot_fastforwardtime = 0.0;
 
 new bool:g_fileRead;
 new bool:g_bot_pause = false;
@@ -624,15 +621,13 @@ new g_date[64];
 new g_country[128];
 new g_bot_interval = 5;
 new g_bot_mark_frame = 0;
+new Float: g_bot_timer = 0.0;
 
 // NUB
 new Array:gc_DemoPlaybot[1];
 new Array:gc_DemoReplay[33];
 new Float:gc_ReplayBestRunTime;
 new Float:gc_bestruntime;
-new Float:gc_bot_cur_compensated_time = 0.0;
-new Float:gc_bot_sum_compensated_time = 0.0;
-new Float:gc_bot_fastforwardtime = 0.0;
 
 new bool:gc_fileRead;
 new bool:gc_bot_pause = false;
@@ -649,6 +644,7 @@ new gc_date[64];
 new gc_country[128];
 new gc_bot_interval = 5;
 new gc_bot_mark_frame = 0;
+new Float: gc_bot_timer = 0.0;
 
 new g_szMapName[32];
 
@@ -1371,6 +1367,7 @@ public ClCmd_UpdateReplay(id, Float:timer)
 	ArrayClear(g_DemoReplay[id]);
 	set_task(2.0, "bot_overwriting")
 	return 0;
+	// flBotAngle[0] flBotAngle[1] flBotVel[0] flBotVel[1] flBotVel[2] flBotPos[0] flBotPos[1] flBotPos[2] iButton
 }
 
 public ClCmd_UpdateReplay_c(id, Float:timer)
@@ -1555,7 +1552,8 @@ public ReadBestRunFile()
 
 		ArrayData[flBotVel][0] = _:str_to_float(szBotVel[0]);
 		ArrayData[flBotVel][1] = _:str_to_float(szBotVel[1]);
-		ArrayData[flBotVel][2] = _:str_to_float(szBotVel[2]);
+		// ArrayData[flBotVel][2] = _:str_to_float(szBotVel[2]);
+		ArrayData[flBotVel][2] = 0.0;
 
 		ArrayData[iButton] = _: str_to_num(szBotButtons);
 
@@ -1636,7 +1634,8 @@ public ReadBestRunFile_c()
 
 		ArrayData[flBotVel][0] = _:str_to_float(szBotVel[0]);
 		ArrayData[flBotVel][1] = _:str_to_float(szBotVel[1]);
-		ArrayData[flBotVel][2] = _:str_to_float(szBotVel[2]);
+		// ArrayData[flBotVel][2] = _:str_to_float(szBotVel[2]);
+		ArrayData[flBotVel][2] = 0.0;
 
 		ArrayData[iButton] = _: str_to_num(szBotButtons);
 
@@ -1803,7 +1802,6 @@ public Pause_bot()
 	{
 		if (!timer_started[g_bot_id]) return;
 		g_pausetime[g_bot_id] = get_gametime() - timer_time[g_bot_id];
-		g_bot_sum_compensated_time += (get_gametime() - g_bot_fastforwardtime) * (g_bot_speed - 1);	// 暂停bot时需要立刻补偿加速/减速的时间
 		timer_time[g_bot_id] = 0.0;
 		IsPaused[g_bot_id] = true;
 		g_bot_pause = true;
@@ -1815,7 +1813,6 @@ public Pause_bot()
 		if (timer_started[g_bot_id])
 		{
 			timer_time[g_bot_id] = get_gametime() - g_pausetime[g_bot_id];
-			g_bot_fastforwardtime = get_gametime();	// 暂停时已补偿 需要将快进时间调整到继续running的时候
 		}
 		IsPaused[g_bot_id] = false;
 		g_bot_pause = false;
@@ -1830,7 +1827,6 @@ public Pause_bot_c()
 	{
 		if (!timer_started[gc_bot_id]) return;
 		g_pausetime[gc_bot_id] = get_gametime() - timer_time[gc_bot_id];
-		gc_bot_sum_compensated_time += (get_gametime() - gc_bot_fastforwardtime) * (gc_bot_speed - 1);	// 暂停bot时需要立刻补偿加速/减速的时间
 		timer_time[gc_bot_id] = 0.0;
 		IsPaused[gc_bot_id] = true;
 		gc_bot_pause = true;
@@ -1842,7 +1838,6 @@ public Pause_bot_c()
 		if (timer_started[gc_bot_id])
 		{
 			timer_time[gc_bot_id] = get_gametime() - g_pausetime[gc_bot_id];
-			gc_bot_fastforwardtime = get_gametime();	// 暂停时已补偿 需要将快进时间调整到继续running的时候
 		}
 		IsPaused[gc_bot_id] = false;
 		gc_bot_pause = false;
@@ -1891,9 +1886,8 @@ start_climb_bot(id)
 	g_bot_pause = false;
 
 	timer_time[g_bot_id] = get_gametime();
-	g_bot_fastforwardtime = timer_time[g_bot_id];
-	g_bot_cur_compensated_time = 0.0;	// 当前需要补偿的时间
-	g_bot_sum_compensated_time = 0.0;	// 之前累计的需要补偿的时间
+	g_bot_timer = 0.0;
+	g_bot_speed = 1;
 	return 0;
 }
 
@@ -1908,9 +1902,8 @@ start_climb_bot_c(id)
 	gc_bot_pause = false;
 
 	timer_time[gc_bot_id] = get_gametime();
-	gc_bot_fastforwardtime = timer_time[gc_bot_id];
-	gc_bot_cur_compensated_time = 0.0;	// 当前需要补偿的时间
-	gc_bot_sum_compensated_time = 0.0;	// 之前累计的需要补偿的时间
+	gc_bot_timer = 0.0;
+	gc_bot_speed = 1;
 	return 0;
 }
 
@@ -2005,7 +1998,7 @@ public BotThink( id )
 			set_pev(id, pev_velocity, ArrayData[flBotVel]);
 			set_pev(id, pev_angles, ViewAngles);
 			set_pev(id, pev_origin, ArrayData[flBotPos]);
-			// set_pev(id, pev_button, ArrayData[iButton] );
+			set_pev(id, pev_button, ArrayData[iButton] );
 			set_pev(id, pev_health, 99999.0);
 
 			if( pev( id, pev_gaitsequence ) == 4 && ~pev( id, pev_flags ) & FL_ONGROUND )
@@ -2082,7 +2075,7 @@ public BotThink_c(id)
 			set_pev(id, pev_velocity, ArrayData[flBotVel]);
 			set_pev(id, pev_angles, ViewAngles);
 			set_pev(id, pev_origin, ArrayData[flBotPos]);
-			// set_pev(id, pev_button, ArrayData[iButton] );
+			set_pev(id, pev_button, ArrayData[iButton] );
 			set_pev(id, pev_health, 99999.0);
 
 			if( pev( id, pev_gaitsequence ) == 4 && ~pev( id, pev_flags ) & FL_ONGROUND )
@@ -3581,6 +3574,7 @@ public kz_TimerEntity(iEnt)
 		{
 			timer_task()
 			set_pev(iEnt, pev_nextthink, get_gametime() + 0.08)
+			// set_pev(iEnt, pev_nextthink, get_gametime() + nExttHink)
 		}
 	}
 }
@@ -3694,21 +3688,18 @@ public timer_task()
 				if(target != Dead[i])
 					if(is_user_alive(target) && timer_started[target])
 					{
-						// 如何补偿BOT加速?
-						kreedztime = get_gametime() - (IsPaused[target] ? get_gametime() - g_pausetime[target] : timer_time[target])
-						if(target && target == g_bot_id) {
-							// 计算当前时段的时间补偿;
-							g_bot_cur_compensated_time = g_bot_pause ? 0.0 : (get_gametime() - g_bot_fastforwardtime) * (g_bot_speed - 1);
-
-							// kreedztime是一个临时变量 仅用于展示最终timer结果 所以计算也需要计算到最终结果
-							// 故kreedztime首先补偿本时段前累计的时间差
-							kreedztime += g_bot_sum_compensated_time;	
-							kreedztime += g_bot_cur_compensated_time;
+						// timer_time[id] id按下计时器时是起始时间
+						// 对于普通玩家 计时计算方式采用相差式 BOT则使用累加式
+						if(target && !is_user_bot(target)) kreedztime = get_gametime() - (IsPaused[target] ? get_gametime() - g_pausetime[target] : timer_time[target])
+						else if(target && target == g_bot_id) {
+							g_bot_timer += IsPaused[target] ? 0.0 : (get_gametime() - timer_time[target]) * g_bot_speed;	//暂停不累加
+							timer_time[target] = get_gametime();
+							kreedztime = g_bot_timer;
 						}
 						else if(target && target == gc_bot_id) {
-							gc_bot_cur_compensated_time = gc_bot_pause ? 0.0 : (get_gametime() - gc_bot_fastforwardtime) * (gc_bot_speed - 1);
-							kreedztime += gc_bot_sum_compensated_time;	
-							kreedztime += gc_bot_cur_compensated_time;
+							gc_bot_timer += IsPaused[target] ? 0.0 : (get_gametime() - timer_time[target]) * gc_bot_speed;
+							timer_time[target] = get_gametime();
+							kreedztime = gc_bot_timer;
 						}
 						imin = floatround(kreedztime , floatround_floor)/60
 						isec = kreedztime - (60*imin) + 0.02
@@ -7017,7 +7008,7 @@ public ClCmd_ReplayMenu(id) {
 	formatex(title, charsmax(title), "\r#Kreedz Server \w[\yPRO\w] \rRecord Bot Menu^n\dCode Edited by \rAzuki daisuki~^n^n\dMap \y%s^n\d[\yPRO\d] Time \y%s^n\d[\yPRO\d] by \y%s", MapName, szTimer, g_ReplayName);
 	formatex(launchInfo, charsmax(launchInfo), g_bot_pause? "Continue" : "Pause");
 	formatex(speedInfo, charsmax(speedInfo), "Play Speed - [\rx%d\w]", g_bot_speed);
-	formatex(playTypeInfo, charsmax(playTypeInfo), "Play Type - [\r%s\w]", gc_bot_speed > 0 ? "FastForward" : "Rewind");
+	formatex(playTypeInfo, charsmax(playTypeInfo), "Play Type - [\r%s\w]", g_bot_speed > 0 ? "FastForward" : "Rewind");
 	formatex(IntervalInfo, charsmax(IntervalInfo), "Interval: \y%ds", g_bot_interval);
 	formatex(skipIntervalInfo, charsmax(skipIntervalInfo), "\ySkip Interval");
 	formatex(markFrameInfo, charsmax(markFrameInfo), "Marked Frame: [\y%d\w]", g_bot_mark_frame);
@@ -7050,7 +7041,10 @@ public ClCmd_ReplayMenuHandler(id, menu, item) {
 		case 1:	//GO Mark Frame
 		{
 			if(g_bot_mark_frame != 0) 
+			{
+				g_bot_timer += float(g_bot_mark_frame - g_bot_frame) / 100.00;
 				g_bot_frame = g_bot_mark_frame;
+			}
 			ClCmd_ReplayMenu(id);
 		}
 		case 2:	//PLAY TYPE
@@ -7062,8 +7056,6 @@ public ClCmd_ReplayMenuHandler(id, menu, item) {
 		{
 			if(abs(g_bot_speed) >= 16) g_bot_speed = g_bot_speed > 0 ? 1 : -1;
 			else g_bot_speed *= 2;
-			g_bot_fastforwardtime = get_gametime();
-			if(!g_bot_pause) g_bot_sum_compensated_time += g_bot_cur_compensated_time;	// 播放速度发生变化 则立刻累计本时段内时间差
 			ClCmd_ReplayMenu(id);
 		}
 		case 4:	//INTERVALS
@@ -7081,7 +7073,6 @@ public ClCmd_ReplayMenuHandler(id, menu, item) {
 			get_user_authid(id, authid, 31);
 			if (equal(authid, "VALVE_ID_LAN") || equal(authid, "STEAM_ID_LAN")) maxFps = 101;
 			g_bot_frame += g_bot_interval * maxFps;
-			g_bot_sum_compensated_time += g_bot_interval;
 			ClCmd_ReplayMenu(id);
 		}
 		case 6:	//GO [NUB]BOT MENU
@@ -7170,8 +7161,11 @@ public ClCmd_ReplayMenuHandler_c(id, menu, item) {
 		}
 		case 1:	//GO Mark Frame
 		{
-			if(gc_bot_frame != 0)
+			if(gc_bot_mark_frame != 0)
+			{
+				
 				gc_bot_frame = gc_bot_mark_frame;
+			}
 			ClCmd_ReplayMenu_c(id);
 		}
 		case 2:	//PLAY TYPE
@@ -7183,8 +7177,6 @@ public ClCmd_ReplayMenuHandler_c(id, menu, item) {
 		{
 			if(abs(gc_bot_speed) == 16) gc_bot_speed = gc_bot_speed > 0 ? 1 : -1;
 			else gc_bot_speed *= 2;
-			gc_bot_fastforwardtime = get_gametime();
-			if(!gc_bot_pause) gc_bot_sum_compensated_time += gc_bot_cur_compensated_time;	// 播放速度发生变化 则立刻累计本时段内时间差; 暂停时不用补偿
 			ClCmd_ReplayMenu_c(id);
 		}
 		case 4:	//INTERVALS
@@ -7201,8 +7193,8 @@ public ClCmd_ReplayMenuHandler_c(id, menu, item) {
 			new maxFps = 100;
 			get_user_authid(id, authid, 31);
 			if (equal(authid, "VALVE_ID_LAN") || equal(authid, "STEAM_ID_LAN")) maxFps = 101;
-			gc_bot_sum_compensated_time += gc_bot_interval;
 			gc_bot_frame += gc_bot_interval * maxFps;
+			gc_bot_timer += gc_bot_interval;
 			ClCmd_ReplayMenu_c(id);
 		}
 		case 6:	//GO [Pro]BOT MENU
