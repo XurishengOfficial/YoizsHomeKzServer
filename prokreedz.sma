@@ -1265,23 +1265,6 @@ public Ham_PlayerPreThink(id)
 {
 	if (is_user_alive(id))
 	{
-		// 读点数据存放在gc_DemoReplay[id]
-		// if (timer_started[id] && gochecknumbers[id])
-		// {
-		// 	if (!IsPaused[id])
-		// 	{
-		// 		new ArrayData[DemoData];
-		// 		pev(id, pev_origin, ArrayData[flBotPos]);
-		// 		new Float:angle[3];
-		// 		pev(id, pev_v_angle, angle)
-		// 		pev(id, pev_velocity, ArrayData[flBotVel]);
-		// 		ArrayData[flBotAngle][0] = _:angle[0];
-		// 		ArrayData[flBotAngle][1] = _:angle[1];
-		// 		ArrayData[iButton] = get_user_button(id)
-		// 		ArrayPushArray(gc_DemoReplay[id], ArrayData);
-		// 	}
-		// }
-		// 裸跳数据放在g_DemoReplay
 		if (timer_started[id])
 		{
 			if (!IsPaused[id])
@@ -1294,7 +1277,7 @@ public Ham_PlayerPreThink(id)
 				ArrayData[flBotAngle][0] = _:angle[0];
 				ArrayData[flBotAngle][1] = _:angle[1];
 				ArrayData[iButton] = get_user_button(id)
-				ArrayPushArray(g_DemoReplay[id], ArrayData);
+				ArrayPushArray(g_DemoReplay[id], ArrayData);	// 裸跳存点跳都存在g_DemoReplay[33]里
 			}
 		}
 	}
@@ -1338,29 +1321,11 @@ public ClCmd_UpdateReplay(id, Float:timer)
 	fputs(hFile, date);
 	fputs(hFile, cty);
 	new ArrayData[DemoData];
-	new ArrayData2[DemoData];
 	for(new i; i < ArraySize(g_DemoReplay[id]); i++)
 	{
 		ArrayGetArray(g_DemoReplay[id], i, ArrayData);	// 将g_DemoReplay[id][i]保存到ArrayData
-		ArrayData2[flBotAngle][0] = _:ArrayData[flBotAngle][0]
-		ArrayData2[flBotAngle][1] = _:ArrayData[flBotAngle][1]
-		ArrayData2[flBotVel][0] = _:ArrayData[flBotVel][0]
-		ArrayData2[flBotVel][1] = _:ArrayData[flBotVel][1]
-		ArrayData2[flBotVel][2] = _:ArrayData[flBotVel][2]
-		ArrayData2[flBotPos][0] = _:ArrayData[flBotPos][0]
-		ArrayData2[flBotPos][1] = _:ArrayData[flBotPos][1]
-		ArrayData2[flBotPos][2] = _:ArrayData[flBotPos][2]
-		ArrayData2[iButton] = ArrayData[iButton]
-		if(i >= ArraySize(g_DemoReplay[id]))
-		{
-			ArrayPushArray(g_DemoReplay[id], ArrayData2);
-		}
-		else
-		{
-			ArraySetArray(g_DemoReplay[id], i, ArrayData2);
-		}
-		formatex(szData, sizeof(szData) - 1, "%f %f %f %f %f %f %f %f %d^n", ArrayData2[flBotAngle][0], ArrayData2[flBotAngle][1],
-		ArrayData2[flBotPos][0], ArrayData2[flBotPos][1], ArrayData2[flBotPos][2], ArrayData2[flBotVel][0], ArrayData2[flBotVel][1], ArrayData2[flBotVel][2], ArrayData2[iButton]);
+		formatex(szData, sizeof(szData) - 1, "%f %f %f %f %f %f %f %f %d^n", ArrayData[flBotAngle][0], ArrayData[flBotAngle][1],
+		ArrayData[flBotPos][0], ArrayData[flBotPos][1], ArrayData[flBotPos][2], ArrayData[flBotVel][0], ArrayData[flBotVel][1], ArrayData[flBotVel][2], ArrayData[iButton]);
 		fputs(hFile, szData);
 	}
 	fclose(hFile);
@@ -1408,29 +1373,11 @@ public ClCmd_UpdateReplay_c(id, Float:timer)
 	fputs(hFile, date);
 	fputs(hFile, cty);
 	new ArrayData[DemoData];
-	new ArrayData2[DemoData];
 	for(new i; i < ArraySize(g_DemoReplay[id]); i++)
 	{
 		ArrayGetArray(g_DemoReplay[id], i, ArrayData);	// 将g_DemoReplay[id][i]保存到ArrayData
-		ArrayData2[flBotAngle][0] = _:ArrayData[flBotAngle][0]
-		ArrayData2[flBotAngle][1] = _:ArrayData[flBotAngle][1]
-		ArrayData2[flBotVel][0] = _:ArrayData[flBotVel][0]
-		ArrayData2[flBotVel][1] = _:ArrayData[flBotVel][1]
-		ArrayData2[flBotVel][2] = _:ArrayData[flBotVel][2]
-		ArrayData2[flBotPos][0] = _:ArrayData[flBotPos][0]
-		ArrayData2[flBotPos][1] = _:ArrayData[flBotPos][1]
-		ArrayData2[flBotPos][2] = _:ArrayData[flBotPos][2]
-		ArrayData2[iButton] = ArrayData[iButton]
-		if(i >= ArraySize(g_DemoReplay[id]))
-		{
-			ArrayPushArray(g_DemoReplay[id], ArrayData2);
-		}
-		else
-		{
-			ArraySetArray(g_DemoReplay[id], i, ArrayData2);
-		}
-		formatex(szData, sizeof(szData) - 1, "%f %f %f %f %f %f %f %f %d^n", ArrayData2[flBotAngle][0], ArrayData2[flBotAngle][1],
-		ArrayData2[flBotPos][0], ArrayData2[flBotPos][1], ArrayData2[flBotPos][2], ArrayData2[flBotVel][0], ArrayData2[flBotVel][1], ArrayData2[flBotVel][2], ArrayData2[iButton]);
+		formatex(szData, sizeof(szData) - 1, "%f %f %f %f %f %f %f %f %d^n", ArrayData[flBotAngle][0], ArrayData[flBotAngle][1],
+		ArrayData[flBotPos][0], ArrayData[flBotPos][1], ArrayData[flBotPos][2], ArrayData[flBotVel][0], ArrayData[flBotVel][1], ArrayData[flBotVel][2], ArrayData[iButton]);
 		fputs(hFile, szData);
 	}
 	fclose(hFile);
@@ -1485,15 +1432,10 @@ public bot_overwriting_c()
 
 public ReadBestRunFile()
 {
-	// server_print("==================================================");
-	// server_print("ReadBestRunFile");
-	// server_print("==================================================");
-
 	new ArrayData[DemoData];
 
 	new szFile[128], len
 	format(szFile, sizeof(szFile) - 1, "%s/records/Pro", DATADIR) 		// data/records/Pro
-	// client_print(0, 2, szFile);
 	if( !dir_exists(szFile) ) mkdir(szFile);								
 
 	format(szFile, sizeof(szFile) - 1, "%s/%s.txt", szFile, g_szMapName)	// data/records/Pro/<map>.txt
@@ -1944,7 +1886,7 @@ public BotThink( id )
 	static Float:last_check, Float:game_time, nFrame;
 	game_time = get_gametime();
 
-	if( game_time - last_check > 1.0 ) //?帧数时差补偿？因为帧数问题导致bot丢帧?
+	if( game_time - last_check > 1.0 ) //?帧数时差补偿？因为帧数问题导致bot丢帧? 相差时间为1s时 通过当前帧数大于or小于100判断是否需要额外补偿
 	{
 		if (nFrame < 100)
 			nExttHink = nExttHink - 0.0001
@@ -3285,6 +3227,7 @@ public fwdPlayerPreThink(id)
 	{
 		isFalling[id] = false
 	}
+	// client_cmd(id, "fps_max 99.5");
 	return FMRES_IGNORED	
 }	
 
@@ -5428,7 +5371,6 @@ stock ReadMaps()
 	if(!file_exists(szFile)) 
 	{
 		new hFile = fopen(szFile, "wt");
-		fputs(hFile, ";bbs.simen.com^n^n");
 		fclose(hFile);	
 	}
 	
@@ -6375,13 +6317,13 @@ public kz_menu(id)
 	new thetime[64];
 	new isMapFound = false;
 	get_time("%Y/%m/%d - %H:%M:%S",thetime,63)
-
+`
 	new tl = get_timeleft()	
 	
 	new data[256], map[64];
-	new map_time_file[128];
-	formatex(map_time_file, 127, "%s/%s", KZ_DIR, KZ_MAPTYPE);
-	new f = fopen(map_time_file, "rt" );
+	new map_type_file[128];
+	formatex(map_type_file, 127, "%s/%s", KZ_DIR, KZ_MAPTYPE);
+	new f = fopen(map_type_file, "rt" );
 	
 	while( !feof( f ) )
 	{
@@ -6390,11 +6332,12 @@ public kz_menu(id)
 		strtok(data, map, charsmax(map), maptype, charsmax(maptype),' ')	
 		trim(map);
 		trim(maptype);	// 去除首尾空格
-
 		if( equali( map, MapName ) )
 		{			
 			formatex(MapInfo, charsmax(MapInfo), "%s", maptype);
 			// server_print("MapInfo is = %s =", MapInfo);
+			strtok(MapInfo, map, charsmax(map), maptype, charsmax(maptype),' ')
+			// server_print("MapInfo is = %s = %s =", map, maptype);
 			isMapFound = true;
 			break;
 		} 

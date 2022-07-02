@@ -11,6 +11,8 @@
 #define KZ_ADMIN ADMIN_IMMUNITY
 #define KZ_LEVEL ADMIN_KICK 
 #define KZ_LEVEL_VIP ADMIN_LEVEL_C
+#define CHECK_FREQ 5
+#define MIN_AFK_TIME 30	
 
 new g_szPrefix[32];
 new bool:g_bPlayerVoted[33];
@@ -23,7 +25,7 @@ new g_iWinner;
 new g_iCounterVoting[33];
 new g_iCounterForTask;	// 投票前的倒计时 
 new g_szMap[7][32];			// 备选的5张地图名 + curMap + nextMap
-new g_szMenuItem[7][40];	// 保存备选5个地图菜单选项
+new g_szMenuItem[7][128];	// 保存备选5个地图菜单选项
 new g_iMapVotes[7];	// 0~4 随机5张图的票数 5 延长 6 amx_nextmap
 new g_szCurrentMap[34];
 new g_iMapNum;
@@ -38,6 +40,14 @@ new bool:g_bRockVoted[33];
 new g_iRockNum;
 new g_iRandomNum[5];	// 5个随机数
 new g_iRtvMenuId = 0;
+
+new g_iOldAngles[33][3]
+new g_iAfkTime[33]
+new g_bAFKing[33];
+
+new const KZ_DIR[] = "addons/amxmodx/configs/kz"
+new const KZ_MAPTYPE_FILE[] = "map_type.ini"
+new Trie: g_tMapType;
 
 stock is_user_vip(id) { return get_user_flags(id) & KZ_LEVEL_VIP; }
 
@@ -138,16 +148,27 @@ Randomize5Maps(iUperBound, iCurMap) {
 	formatex(g_szMap[5], 31, "%s", curMap);
 	formatex(g_szMap[6], 31, "%s", nextMap);
 	i = 0;
-	// log
-	// server_print("==============================");
-	// while(i < 5)
-	// {
-	// 	server_print("#%d %d %s", i + 1, g_iRandomNum[i], g_szMap[i]);
-	// 	++i;
-	// }
-	// server_print("#%d %s %s", 6, "CurMap", g_szMap[5]);
-	// server_print("#%d %s %s", 7, "NextMap", g_szMap[6]);
-	// server_print("==============================");
+
+	// set map type
+	i = 0;
+	new data[256], map[32], mapType[64];
+	new map_type_file[128];
+	formatex(map_type_file, charsmax(map_type_file), "%s/%s", KZ_DIR, KZ_MAPTYPE_FILE);
+	new f = fopen(map_type_file, "rt" );
+	// server_print("*****************************************************");
+	while( !feof( f ) )
+	{
+		fgets( f, data, 255 )
+		// parse( data, map, charsmax(map), mapType, charsmax(mapType));
+		strtok(data, map, charsmax(map), mapType, charsmax(mapType),' ')	
+		trim(map);
+		trim(mapType);	// 去除首尾空格
+		TrieSetString(g_tMapType, map, mapType);
+		// server_print("map: %s, mapInfo: %s", map, mapType);
+	}
+	// server_print("*****************************************************");
+	fclose(f)
+
 }
 
 get_players_num()
@@ -208,7 +229,6 @@ stock is_user_localhost(id)
 {
 	new szIP[16];
 	get_user_ip(id, szIP, sizeof(szIP) - 1, 1);
-	
 	if(equal(szIP, "loopback") || equal(szIP, "127.0.0.1")) 
 	{
 		return true;
@@ -281,6 +301,8 @@ public plugin_init() {
 	register_clcmd("showMap", "cmdShowMap");
 	register_clcmd("updateMapList", "cmdUpdateMapList", KZ_LEVEL);
 	g_pRockPercent = register_cvar("kz_rtv_ratio", "0.6");
+	register_cvar("mp_afktime", "60")	// Mark player AFKing longer than this time
+	set_task(float(CHECK_FREQ),"checkPlayersAFK",_,_,_,"b")	//b 无限循环
 
 	if (!g_szPrefix[0])
 	{
@@ -314,9 +336,55 @@ public plugin_init() {
 	g_bVoteStarted = false;
 	g_bVoteFinished = false;
 	g_iWinner = -1;
+	g_tMapType = TrieCreate();
 	set_task(1.0, "taskStartVote", 1100, _, _, "b", _);	// 每秒执行该函数
 	g_iRtvMenuId = register_menuid("MapMenu", 0);
 	register_menucmd(g_iRtvMenuId, 1023, "handleMapMenu");	//0~9十个键位 1023 = (1111111111)2
+}
+
+public checkPlayersAFK()
+{
+	// 仅监测活着玩家的AFK状态 观战状态玩家默认!AFKing
+	for (new i = 1; i <= get_maxplayers(); i++) 
+	{
+		if (is_user_alive(i) && is_user_connected(i) && !is_user_bot(i) && !is_user_hltv(i)) 
+		{
+			new newangle[3]
+			get_user_origin(i, newangle)
+			
+			if ( newangle[0] == g_iOldAngles[i][0] && newangle[1] == g_iOldAngles[i][1] && newangle[2] == g_iOldAngles[i][2] ) 
+			{
+				g_iAfkTime[i] += CHECK_FREQ
+				check_afktime(i)
+			} 
+			else 
+			{
+				g_iOldAngles[i][0] = newangle[0];
+				g_iOldAngles[i][1] = newangle[1];
+				g_iOldAngles[i][2] = newangle[2];
+				g_iAfkTime[i] = 0;
+				g_bAFKing[i] = false;
+			}
+		}
+	}
+	return PLUGIN_HANDLED
+}
+
+check_afktime(id) 
+{
+
+	new maxafktime = get_cvar_num("mp_afktime")
+	// 必须保证判定AFK时间>=MIN_AFK_TIME(30s)
+	if (maxafktime < MIN_AFK_TIME) {
+		log_amx("cvar mp_afktime %i is too low. Minimum value is %i.", maxafktime, MIN_AFK_TIME)
+		maxafktime = MIN_AFK_TIME
+		set_cvar_num("mp_afktime", MIN_AFK_TIME)
+	}
+	
+	if(g_iAfkTime[id] > maxafktime) 
+	{
+		g_bAFKing[id] = true;
+	}
 }
 
 public client_putinserver(id)
@@ -327,6 +395,7 @@ public client_putinserver(id)
 		g_bKZMenuOpened[id] = false;
 		g_iCounterVoting[id] = 0;
 		g_bRockVoted[id] = false;
+		g_bAFKing[id] = false;
 	}
 	return 0;
 }
@@ -337,6 +406,7 @@ public client_disconnect(id)
 		g_bRockVoted[id] = false;
 		g_iRockNum--;
 	}
+	g_bAFKing[id] = false;
 }
 
 public taskStartVote()
@@ -377,7 +447,12 @@ public cmdRTV(id)
 		ColorChat(id, GREEN, "^x03[%s] ^x01 Voting failed. Not enough maps", g_szPrefix);
 		return 1;
 	}
-	new needRockNum = floatround(get_pcvar_float(g_pRockPercent) * get_players_num());
+	new afkPlayersNum = 0;
+	for(new i = 1; i <= get_maxplayers(); ++i)
+	{
+		if(g_bAFKing[i]) ++afkPlayersNum;
+	}
+	new needRockNum = floatround( get_pcvar_float(g_pRockPercent) * (get_players_num() - afkPlayersNum) );
 	if(!g_bRockVoted[id]) 
 	{
 		g_bRockVoted[id] = true;
@@ -386,7 +461,7 @@ public cmdRTV(id)
 		{
 			new playerName[64];
 			get_user_name(id, playerName, charsmax(playerName));
-			ColorChat(0, GREEN, "^x04[%s] ^3%s ^1has rocked to ^4Start the vote^1, still Needs ^3%d ^1Votes.", g_szPrefix, playerName, needRockNum - g_iRockNum);
+			ColorChat(0, GREEN, "^x04[%s] ^3%s ^1has rocked to ^4Start the vote^1, still Needs: ^3%d ^1Votes, AFK players: ^3%d", g_szPrefix, playerName, needRockNum - g_iRockNum, afkPlayersNum);
 			return 1;
 		}
 	}
@@ -493,7 +568,7 @@ public taskShowMapMenu(taskid)
 	{
 		return 0;
 	}
-	static szMenu[450];
+	static szMenu[1024];
 	static szMinutesLeft[15];
 	g_iCounterVoting[id]--;
 	// 显示15s的投票时间
@@ -524,9 +599,16 @@ public taskShowMapMenu(taskid)
 			new i;
 			// 将7个地图选项变成灰色
 			while (i < 7)
-			{
+			{	
 				// 灰色 dyd_bhop [2] 两人选择
-				formatex(g_szMenuItem[i], 39, "\d%s \y [%d]", g_szMap[i], g_iMapVotes[i]);
+				new mapType[64];
+				if(TrieKeyExists(g_tMapType, g_szMap[i]))
+				{
+					TrieGetString(g_tMapType, g_szMap[i], mapType, charsmax(mapType));
+				}
+				else formatex(mapType, charsmax(mapType), "Unknown");
+				// server_print("%#d %s: %s", i, g_szMap[i], mapType);
+				formatex(g_szMenuItem[i], 127, "\d%s \y [%d] \d [%s]", g_szMap[i], g_iMapVotes[i], mapType);
 				i++;
 			}
 			// 如果打开了读点存点 响应 MENU_KEY_0 | MENU_KEY_1 | MENU_KEY_2
@@ -550,11 +632,18 @@ public taskShowMapMenu(taskid)
 			while (i < 6)
 			{
 				// 7个地图选项变成白色
-				formatex(g_szMenuItem[i], 39, "\w%s \y [%d]", g_szMap[i], g_iMapVotes[i]);
+				new mapType[64];
+				if(TrieKeyExists(g_tMapType, g_szMap[i]))
+				{
+					TrieGetString(g_tMapType, g_szMap[i], mapType, charsmax(mapType));
+				}
+				else formatex(mapType, charsmax(mapType), "Unknown");
+				// server_print("%s: %s", g_szMap[i], mapType);
+				formatex(g_szMenuItem[i], 127, "\w%s \y [%d] \d [%s]", g_szMap[i], g_iMapVotes[i], mapType);
 				i++;
 			}
 			// i = 6 nextmap
-			formatex(g_szMenuItem[i], 39, "\y%s \y [%d]", g_szMap[i], g_iMapVotes[i]);
+			formatex(g_szMenuItem[i], 127, "\y%s \y [%d]", g_szMap[i], g_iMapVotes[i]);
 			formatex(szMenu, charsmax(szMenu), "\yChoose Next Map %s:^n^n\r1. \wCheckPoint^n\r2. \wGoCheck^n^n\r3. %s^n\r4. %s^n\r5. %s^n\r6. %s^n\r7. %s^n^n\r8. \dExtend \y%s \dfor \y%d \dminutes \y[%d]^n\r9. %s\d(Next Map)^n", szMinutesLeft, g_szMenuItem[0], g_szMenuItem[1], g_szMenuItem[2], g_szMenuItem[3], g_szMenuItem[4], g_szMap[5], 15, g_iMapVotes[5], g_szMenuItem[6]);
 			if(is_user_vip(id))
 				format(szMenu, charsmax(szMenu), "%s^n\r0. \wForce \rStop the Vote", szMenu);
@@ -678,7 +767,7 @@ public handleMapMenu(id, item)
 			{
 				g_iMapVotes[item - 2] += 1;	// 选项选择计数
 				g_bPlayerVoted[id] = true;
-				ColorChat(0, GREEN, "^x04[%s] ^3%s ^1Choose [^4%d^1] ^3%s", g_szPrefix, playerName, item + 1, g_szMap[item - 2]);
+				ColorChat(0, GREEN, "^x04[%s] ^3%s ^1choose [^4%d^1] ^3%s", g_szPrefix, playerName, item + 1, g_szMap[item - 2]);
 			}
 		}
 		case 7: // Extend
@@ -687,12 +776,12 @@ public handleMapMenu(id, item)
 			{
 				g_iMapVotes[item - 2] += 1;	// 选项选择计数
 				g_bPlayerVoted[id] = true;
-				ColorChat(0, GREEN, "^x04[%s] ^3%s ^1Choose Extend [^4%d^1] ^3%s", g_szPrefix, playerName, item + 1, g_szMap[item - 2]);
+				ColorChat(0, GREEN, "^x04[%s] ^3%s ^1choose ^4extending current map.", g_szPrefix, playerName);
 			}
 		}
 		case 9: // 管理员取消
 		{
-			if(!is_user_vip(id))	// 非VIO or Admin Do not want to Vote
+			if(!is_user_vip(id))	// 非VIP or Admin Do not want to Vote
 			{
 				if(task_exists(id + 1200))
 					remove_task(id + 1200);
@@ -880,4 +969,9 @@ public cmdShowMap()
 		++i;
 	}
 	server_print("==============================================")
+}
+
+public plugin_end()
+{
+	TrieDestroy(g_tMapType);
 }
