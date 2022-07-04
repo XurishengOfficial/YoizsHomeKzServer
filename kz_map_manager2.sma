@@ -440,19 +440,20 @@ public cmdRTV(id)
 	if (g_bVoteStarted)
 	{
 		ColorChat(id, GREEN, "^x03[%s] ^x01 Voting is in progress", g_szPrefix);
-		return 1;
+		return PLUGIN_HANDLED;
 	}
 	if (g_bNotEnoughMaps)
 	{
 		ColorChat(id, GREEN, "^x03[%s] ^x01 Voting failed. Not enough maps", g_szPrefix);
-		return 1;
+		return PLUGIN_HANDLED;
 	}
 	new afkPlayersNum = 0;
 	for(new i = 1; i <= get_maxplayers(); ++i)
 	{
 		if(g_bAFKing[i]) ++afkPlayersNum;
 	}
-	new needRockNum = floatround( get_pcvar_float(g_pRockPercent) * (get_players_num() - afkPlayersNum) );
+	new curPlayersNum = get_players_num();
+	new needRockNum = floatround( get_pcvar_float(g_pRockPercent) * (curPlayersNum - afkPlayersNum) );
 	if(!g_bRockVoted[id]) 
 	{
 		g_bRockVoted[id] = true;
@@ -461,8 +462,14 @@ public cmdRTV(id)
 		{
 			new playerName[64];
 			get_user_name(id, playerName, charsmax(playerName));
-			ColorChat(0, GREEN, "^x04[%s] ^3%s ^1has rocked to ^4Start the vote^1, still Needs: ^3%d ^1Votes, AFK players: ^3%d", g_szPrefix, playerName, needRockNum - g_iRockNum, afkPlayersNum);
-			return 1;
+			ColorChat(0, GREEN, "^x04[%s] ^3%s ^1has rocked to ^4Start the vote^1, still Needs: ^3%d ^1Votes, All players: ^3%d^1, ^1Voted: ^3%d^1, AFK players: ^3%d", 
+			g_szPrefix, 
+			playerName, 
+			needRockNum - g_iRockNum, 
+			curPlayersNum, 
+			g_iRockNum, 
+			afkPlayersNum);
+			return PLUGIN_HANDLED;
 		}
 	}
 	else
@@ -470,13 +477,13 @@ public cmdRTV(id)
 		if(g_iRockNum < needRockNum)
 		{
 			ColorChat(id, GREEN, "^x04[%s] ^1You have been rocked the vote.", g_szPrefix);
-			return 1;
+			return PLUGIN_HANDLED;
 		}
 			
 	}
 	StartVote();
 	ColorChat(0, GREEN, "^x04[%s] ^x01 Voting started", g_szPrefix);
-	return 1;
+	return PLUGIN_HANDLED;
 }
 
 public StartVote()
