@@ -619,7 +619,17 @@ public taskShowMapMenu(taskid)
 				i++;
 			}
 			// 如果打开了读点存点 响应 MENU_KEY_0 | MENU_KEY_1 | MENU_KEY_2
-			formatex(szMenu, charsmax(szMenu), "\yChoose Next Map %s:^n^n\r1. \wCheckPoint^n\r2. \wGoCheck^n^n\r3. %s^n\r4. %s^n\r5. %s^n\r6. %s^n\r7. %s^n^n\r8. \dExtend %s for %d minutes \y[%d]^n\r9. %s\d(Next Map)^n", szMinutesLeft, g_szMenuItem[0], g_szMenuItem[1], g_szMenuItem[2], g_szMenuItem[3], g_szMenuItem[4], g_szMap[5], 15, g_iMapVotes[5], g_szMenuItem[6]);
+			formatex(szMenu, charsmax(szMenu), 
+				"\yChoose Next Map %s:^n^n\r1. \wCheckPoint^n\r2. \wGoCheck^n^n\r3. %s^n\r4. %s^n\r5. %s^n\r6. %s^n\r7. %s^n^n\r8. \dExtend %s for %d minutes \y[%d]^n\r9. %s\d (Next Map)^n", 
+				szMinutesLeft, 
+				g_szMenuItem[0], 
+				g_szMenuItem[1], 
+				g_szMenuItem[2], 
+				g_szMenuItem[3], 
+				g_szMenuItem[4], 
+				g_szMap[5], 15, g_iMapVotes[5], 
+				g_szMenuItem[6]
+			);
 			// 已投票普通玩家响应1.2. vip玩家响应1.2.0.
 			if(is_user_vip(id)) {
 				// Forced termination of voting
@@ -636,7 +646,7 @@ public taskShowMapMenu(taskid)
 		// 未投
 		{
 			new i;
-			while (i < 6)
+			while (i < 7)
 			{
 				// 7个地图选项变成白色
 				new mapType[64];
@@ -646,12 +656,23 @@ public taskShowMapMenu(taskid)
 				}
 				else formatex(mapType, charsmax(mapType), "Unknown");
 				// server_print("%s: %s", g_szMap[i], mapType);
-				formatex(g_szMenuItem[i], 127, "\w%s \y [%d] \d [%s]", g_szMap[i], g_iMapVotes[i], mapType);
+				if(i != 6)
+					formatex(g_szMenuItem[i], 127, "\w%s \y [%d] \d [%s]", g_szMap[i], g_iMapVotes[i], mapType);
+				else
+					formatex(g_szMenuItem[i], 127, "\y%s \y [%d] \d [%s]", g_szMap[i], g_iMapVotes[i], mapType);	// i = 6 nextmap
 				i++;
 			}
-			// i = 6 nextmap
-			formatex(g_szMenuItem[i], 127, "\y%s \y [%d]", g_szMap[i], g_iMapVotes[i]);
-			formatex(szMenu, charsmax(szMenu), "\yChoose Next Map %s:^n^n\r1. \wCheckPoint^n\r2. \wGoCheck^n^n\r3. %s^n\r4. %s^n\r5. %s^n\r6. %s^n\r7. %s^n^n\r8. \dExtend \y%s \dfor \y%d \dminutes \y[%d]^n\r9. %s\d(Next Map)^n", szMinutesLeft, g_szMenuItem[0], g_szMenuItem[1], g_szMenuItem[2], g_szMenuItem[3], g_szMenuItem[4], g_szMap[5], 15, g_iMapVotes[5], g_szMenuItem[6]);
+			
+			formatex(szMenu, charsmax(szMenu), "\yChoose Next Map %s:^n^n\r1. \wCheckPoint^n\r2. \wGoCheck^n^n\r3. %s^n\r4. %s^n\r5. %s^n\r6. %s^n\r7. %s^n^n\r8. \dExtend \y%s \dfor \y%d \dminutes \y[%d]^n\r9. %s\d (Next Map)^n", 
+				szMinutesLeft, 
+				g_szMenuItem[0], 
+				g_szMenuItem[1], 
+				g_szMenuItem[2], 
+				g_szMenuItem[3], 
+				g_szMenuItem[4], 
+				g_szMap[5], 15, g_iMapVotes[5], 
+				g_szMenuItem[6]
+			);
 			if(is_user_vip(id))
 				format(szMenu, charsmax(szMenu), "%s^n\r0. \wForce \rStop the Vote", szMenu);
 			else
@@ -792,6 +813,9 @@ public handleMapMenu(id, item)
 			{
 				if(task_exists(id + 1200))
 					remove_task(id + 1200);
+				new playerName[64];
+				get_user_name(id, playerName, charsmax(playerName));
+				ColorChat(0, GREEN, "^x04[%s] ^3%s ^1choose ^4Abstention.", g_szPrefix, playerName);
 				if(g_bKZMenuOpened[id])  client_cmd(id, "/jumpMenu");
 				return;
 			} 
@@ -807,6 +831,8 @@ public handleMapMenu(id, item)
 				{
 					if (task_exists(iPlayer + 1200))
 						remove_task(iPlayer + 1200);
+					g_bRockVoted[iPlayer] = false;	// 强制取消后 设置所有人未投票未选择
+					g_bPlayerVoted[iPlayer] = false;
 					show_menu(iPlayer, 0, "^n", -1); // 显示空菜单 防止取消后还可以选择(虽然选取也无效)
 				}
 				if (g_bKZMenuOpened[iPlayer]) client_cmd(iPlayer, "/jumpMenu");
@@ -814,8 +840,11 @@ public handleMapMenu(id, item)
 			}
 			if(task_exists(1250)) remove_task(1250);	// 移除checkVotes
 			ColorChat(0, GREEN, "^x04[%s] ^x01 Voting Canceled by ^3%s.", g_szPrefix, playerName);
+
+			// 本轮投票强制结束 所有参数初始化
 			g_bVoteStarted = false;
 			g_bVoteFinished = false;
+			g_iRockNum = 0;
 			return;
 		}
 		default:
