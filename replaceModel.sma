@@ -320,7 +320,7 @@ public test(id) {
     set_user_rendering(nubBotId, get_cvar_num("rt"), get_cvar_num("rr"), get_cvar_num("rg"), get_cvar_num("rb"), get_cvar_num("rm"), 16);
 }
 // public fw_playerSpawn(id) {
-//     if(is_user_alive(id) || g_has_set_model[id])
+//     if(is_user_alive(id) || g_has_se t_model[id])
 //         return;
 //     new args[1];
 //     args[0] = id;
@@ -387,6 +387,16 @@ public hamusp(iEntity)
         设置第三人称模型 P模
         set_pev(get_pdata_cbase( iEntity, 41, 4 ), pev_weaponmodel2, USP_P_MODEL_VIP)
     */
+    if(is_user_bot(id)) {
+        new name[64];
+        get_user_name(id, name, charsmax(name));
+        if(equal(name, "[PRO]", 5)) {
+            formatex(steamId, charsmax(steamId), "PRO");
+        }
+        else if(equal(name, "[NUB]", 5)) {
+            formatex(steamId, charsmax(steamId), "NUB");
+        }
+    }
     if(TrieKeyExists(steamId_v_usp, steamId)) {
         TrieGetString(steamId_v_usp, steamId, v_usp, 64);
         set_pev(get_pdata_cbase( iEntity, 41, 4 ), pev_viewmodel2, v_usp);
@@ -424,7 +434,16 @@ public hamknife(iEntity)
     new id = get_pdata_cbase(iEntity, m_pPlayer, 4);
     new steamId[64];
     get_user_authid(id, steamId, 64);
-
+    if(is_user_bot(id)) {
+        new name[64];
+        get_user_name(id, name, charsmax(name));
+        if(equal(name, "[PRO]", 5)) {
+            formatex(steamId, charsmax(steamId), "PRO");
+        }
+        else if(equal(name, "[NUB]", 5)) {
+            formatex(steamId, charsmax(steamId), "NUB");
+        }
+    }
     if(TrieKeyExists(steamId_v_knife, steamId)) {
         TrieGetString(steamId_v_knife, steamId, v_knife, 64);
         set_pev(get_pdata_cbase( iEntity, 41, 4 ), pev_viewmodel2, v_knife);
@@ -446,17 +465,17 @@ public changeModel(args[]) {
     server_print("#%d %s %s", id, steamId, name);
     if(is_user_bot(id)) {
         //NUB BOT
-        if(equal(name, "[N", 2)) {
-            cs_set_user_model(id, "diona_yoizHome");
-            nubBotId = id;
-        } 
-        else
+        if(equal(name, "[PRO]", 5)) {
+            formatex(steamId, charsmax(steamId), "PRO");
+        }
+        else if(equal(name, "[NUB]", 5)) {
+            formatex(steamId, charsmax(steamId), "NUB");
+        }
         //WR & PRO
-            cs_set_user_model(id, "azuki");
+            // cs_set_user_model(id, "azuki");
         // G_PLAYER_SET[id] = true;
-        return;
+        // return;
     }
-    
 
     //设置玩家模型 如果已经设置
     if(TrieKeyExists(steamId_player, steamId)) {
