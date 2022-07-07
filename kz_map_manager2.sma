@@ -30,6 +30,7 @@ new g_iMapVotes[7];	// 0~4 随机5张图的票数 5 延长 6 amx_nextmap
 new g_szCurrentMap[34];
 new g_iMapNum;
 new g_iCurMapIdx;
+new g_iExtendedTimes = 0;
 new Array:g_aAllMaps;
 new Array:g_aNominateMaps;
 new g_iNominatedMaps[33];
@@ -290,7 +291,7 @@ public findMaps()
 }
 
 public plugin_init() {
-	register_plugin(PLUGIN_NAME, "3.2.1", "Kpoluk & Azuki daisuki~ ");
+	register_plugin(PLUGIN_NAME, "3.2.2", "Kpoluk & Azuki daisuki~ ");
 	register_saycmd("rtv", "cmdRTV");
 	register_clcmd("say rtv", "cmdRTV");
 	register_clcmd("say_team rtv", "cmdRTV");
@@ -302,6 +303,7 @@ public plugin_init() {
 	register_clcmd("updateMapList", "cmdUpdateMapList", KZ_LEVEL);
 	g_pRockPercent = register_cvar("kz_rtv_ratio", "0.6");
 	register_cvar("mp_afktime", "60")	// Mark player AFKing longer than this time
+	register_cvar("kz_max_extend_time", "15")	// Max extend current map times
 	set_task(float(CHECK_FREQ),"checkPlayersAFK",_,_,_,"b")	//b 无限循环
 
 	if (!g_szPrefix[0])
@@ -618,16 +620,21 @@ public taskShowMapMenu(taskid)
 				formatex(g_szMenuItem[i], 127, "\d%s \y [%d] \d [%s]", g_szMap[i], g_iMapVotes[i], mapType);
 				i++;
 			}
+			new maxExtendTimes = get_cvar_num("kz_max_extend_time");
+			if(g_iExtendedTimes < maxExtendTimes) 
+				formatex(g_szMenuItem[5], 127, "\r8. \dExtend %s for %d minutes \y[%d] \r[You can run \y%d \rtimes]", g_szMap[5], 15, g_iMapVotes[5], maxExtendTimes - g_iExtendedTimes);
+			else
+				formatex(g_szMenuItem[5], 127, "");
 			// 如果打开了读点存点 响应 MENU_KEY_0 | MENU_KEY_1 | MENU_KEY_2
 			formatex(szMenu, charsmax(szMenu), 
-				"\yChoose Next Map %s:^n^n\r1. \wCheckPoint^n\r2. \wGoCheck^n^n\r3. %s^n\r4. %s^n\r5. %s^n\r6. %s^n\r7. %s^n^n\r8. \dExtend %s for %d minutes \y[%d]^n\r9. %s\d (Next Map)^n", 
+				"\yChoose Next Map %s:^n^n\r1. \wCheckPoint^n\r2. \wGoCheck^n^n\r3. %s^n\r4. %s^n\r5. %s^n\r6. %s^n\r7. %s^n^n%s^n\r9. %s\d (Next Map)^n", 
 				szMinutesLeft, 
 				g_szMenuItem[0], 
 				g_szMenuItem[1], 
 				g_szMenuItem[2], 
 				g_szMenuItem[3], 
 				g_szMenuItem[4], 
-				g_szMap[5], 15, g_iMapVotes[5], 
+				g_szMenuItem[5], 
 				g_szMenuItem[6]
 			);
 			// 已投票普通玩家响应1.2. vip玩家响应1.2.0.
@@ -662,15 +669,19 @@ public taskShowMapMenu(taskid)
 					formatex(g_szMenuItem[i], 127, "\y%s \y [%d] \d [%s]", g_szMap[i], g_iMapVotes[i], mapType);	// i = 6 nextmap
 				i++;
 			}
-			
-			formatex(szMenu, charsmax(szMenu), "\yChoose Next Map %s:^n^n\r1. \wCheckPoint^n\r2. \wGoCheck^n^n\r3. %s^n\r4. %s^n\r5. %s^n\r6. %s^n\r7. %s^n^n\r8. \dExtend \y%s \dfor \y%d \dminutes \y[%d]^n\r9. %s\d (Next Map)^n", 
+			new maxExtendTimes = get_cvar_num("kz_max_extend_time");
+			if(g_iExtendedTimes < maxExtendTimes) 
+				formatex(g_szMenuItem[5], 127, "\r8. \wExtend \y%s \wfor \y%d \wminutes \y[%d] \r[You can run \w%d \rtimes]", g_szMap[5], 15, g_iMapVotes[5], maxExtendTimes - g_iExtendedTimes);
+			else
+				formatex(g_szMenuItem[5], 127, "");
+			formatex(szMenu, charsmax(szMenu), "\yChoose Next Map %s:^n^n\r1. \wCheckPoint^n\r2. \wGoCheck^n^n\r3. %s^n\r4. %s^n\r5. %s^n\r6. %s^n\r7. %s^n^n%s^n\r9. %s\d (Default Next Map)^n", 
 				szMinutesLeft, 
 				g_szMenuItem[0], 
 				g_szMenuItem[1], 
 				g_szMenuItem[2], 
 				g_szMenuItem[3], 
 				g_szMenuItem[4], 
-				g_szMap[5], 15, g_iMapVotes[5], 
+				g_szMenuItem[5], 
 				g_szMenuItem[6]
 			);
 			if(is_user_vip(id))
@@ -678,7 +689,10 @@ public taskShowMapMenu(taskid)
 			else
 				format(szMenu, charsmax(szMenu), "%s^n\r0. \wDo not Want to \rVote", szMenu);
 			// else show_my_menu(id, MENU_KEY_1 | MENU_KEY_2 | MENU_KEY_3 | MENU_KEY_4 | MENU_KEY_5 | MENU_KEY_6 | MENU_KEY_7 | MENU_KEY_8 | MENU_KEY_9, szMenu, -1, "MapMenu");
-			show_my_menu(id, MENU_KEY_0 | MENU_KEY_1 | MENU_KEY_2 | MENU_KEY_3 | MENU_KEY_4 | MENU_KEY_5 | MENU_KEY_6 | MENU_KEY_7 | MENU_KEY_8 | MENU_KEY_9, szMenu, -1, "MapMenu");	
+			if(g_iExtendedTimes < maxExtendTimes)
+				show_my_menu(id, MENU_KEY_0 | MENU_KEY_1 | MENU_KEY_2 | MENU_KEY_3 | MENU_KEY_4 | MENU_KEY_5 | MENU_KEY_6 | MENU_KEY_7 | MENU_KEY_8 | MENU_KEY_9, szMenu, -1, "MapMenu");
+			else	
+				show_my_menu(id, MENU_KEY_0 | MENU_KEY_1 | MENU_KEY_2 | MENU_KEY_3 | MENU_KEY_4 | MENU_KEY_5 | MENU_KEY_6 | MENU_KEY_7 | MENU_KEY_9, szMenu, -1, "MapMenu");
 		}
 	}
 	return 0;
@@ -688,7 +702,7 @@ public taskShowMapMenu(taskid)
 public taskCheckVotes()
 {
 	new Float:flPassedTime = (get_gametime() - g_flInitTime) / 60;
-	g_iWinner = 0;
+	g_iWinner = 6;	//默认下张图
 	new i;
 	new players[32];
 	new pnum;
@@ -736,10 +750,11 @@ public taskCheckVotes()
 	{
 		server_cmd("mp_timelimit %.2f", 15 + flPassedTime);	// iTimeleft < 1 ==> taskChangeLevel 不会执行taskChangeLevel()
 		ColorChat(0, GREEN, "^x04[%s]^x01 Voting finished. Current map will be^x04 extended for %d minutes", g_szPrefix, 15);
+		g_iExtendedTimes++;
 	}
 	else
 	{
-		server_cmd("mp_timelimit %.2f", 0.15 + flPassedTime);	// 0.5min changelevel
+		server_cmd("mp_timelimit %.2f", 0.15 + flPassedTime);	// about 10s changelevel
 		set_cvar_string("amx_nextmap", g_szMap[g_iWinner]);
 		ColorChat(0, GREEN, "^x04[%s]^x01 Voting finished. Next map will be^x04 %s^x01. Timeleft:^x04 10 seconds", g_szPrefix, g_szMap[g_iWinner]);
 		g_bVoteFinished = true;
