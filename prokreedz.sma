@@ -1724,16 +1724,15 @@ Create_Bot_c()
 	}
 	return 0;
 }
+
 Start_Bot()
 {
-	g_bot_frame = 0;	// 重启 or 初始化 bot frame
 	start_climb_bot(g_bot_id);	// 重置 bot timer
 	return 0;
 }
 
 Start_Bot_c()
 {
-	gc_bot_frame = 0;
 	start_climb_bot_c(gc_bot_id);
 	return 0;
 }
@@ -1805,6 +1804,7 @@ Remove_Bot()
 Remove_Bot_c()
 {
 	server_cmd("kick #%d", get_user_userid(gc_bot_id));
+	// reset Nub Bot Play vars
 	gc_bot_id = 0;
 	gc_bot_enable = 0;
 	gc_bot_frame = 0;
@@ -1819,6 +1819,7 @@ Remove_Bot_c()
 // 控制BOT的计时器相关
 start_climb_bot(id)
 {
+	// reset pro bot demoplay para
 	set_pev(g_bot_id, pev_gravity, 1.0);  // pev_gravity
 	set_pev(g_bot_id, pev_movetype, MOVETYPE_WALK);   // pev_movetype
 	reset_checkpoints(id);
@@ -1829,12 +1830,18 @@ start_climb_bot(id)
 
 	timer_time[g_bot_id] = get_gametime();
 	g_bot_timer = 0.0;
+
+	g_bot_frame = 0;
+	g_bot_mark_frame = 0;
+	
 	g_bot_speed = 1;
+
 	return 0;
 }
 
 start_climb_bot_c(id)
 {
+	// reset nub bot demoplay para
 	set_pev(gc_bot_id, pev_gravity, 1.0);  // pev_gravity
 	set_pev(gc_bot_id, pev_movetype, MOVETYPE_WALK);   // pev_movetype
 	reset_checkpoints(id);
@@ -1845,7 +1852,11 @@ start_climb_bot_c(id)
 
 	timer_time[gc_bot_id] = get_gametime();
 	gc_bot_timer = 0.0;
+
+	gc_bot_frame = 0;
+	gc_bot_mark_frame = 0;
 	gc_bot_speed = 1;
+
 	return 0;
 }
 
@@ -6317,7 +6328,6 @@ public kz_menu(id)
 	new thetime[64];
 	new isMapFound = false;
 	get_time("%Y/%m/%d - %H:%M:%S",thetime,63)
-`
 	new tl = get_timeleft()	
 	
 	new data[256], map[64];
@@ -7106,7 +7116,7 @@ public ClCmd_ReplayMenuHandler_c(id, menu, item) {
 		{
 			if(gc_bot_mark_frame != 0)
 			{
-				
+				gc_bot_timer += float(gc_bot_mark_frame - gc_bot_frame) / 100.00;
 				gc_bot_frame = gc_bot_mark_frame;
 			}
 			ClCmd_ReplayMenu_c(id);

@@ -201,8 +201,8 @@ public rpHackReason(id) {
             log_to_file(reportHackFilePath, "[Admin] %s", rpInfo[id]);
         else {
             log_to_file(reportHackFilePath, "[Player] %s", rpInfo[id]);
-            client_print(id, print_chat, "您的反馈已记录, 管理员将会不定期处理, 感谢您的支持!");
         }
+        client_print(id, print_chat, "您的反馈已记录, 管理员将会不定期处理, 感谢您的支持!");
     }  
     else
         log_amx("Create ReportHack File Failed!");

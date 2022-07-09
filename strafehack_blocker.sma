@@ -63,6 +63,7 @@ public plugin_init()
 	register_forward(FM_PlayerPreThink, "FM_PlayerPreThink_Pre", false);
 	register_forward(FM_PlayerPreThink, "FM_PlayerPreThink_Post", true);
 	RegisterHam(Ham_Spawn, "player", "Ham_PlayerSpawn_Post", true);
+	register_cvar("ac_strafe_punish", "0");
 	
 	new szWeaponName[32];
 	for(new iId = CSW_P228; iId <= CSW_P90; iId++)
@@ -80,7 +81,9 @@ public plugin_init()
 public plugin_cfg()
 {
 	get_localinfo("amxx_logs", szLogFile, 63);
-	format(szLogFile, 63, "/%s/%s", szLogFile, LOGFILE);
+	new thetime[64];
+	get_time("%Y%m%d", thetime, charsmax(thetime));
+	format(szLogFile, 63, "/%s/strafehack_%s.log", szLogFile, thetime);
 	if (!file_exists(szLogFile))
 	{
 		write_file(szLogFile, "StrafeHack LogFile");
@@ -110,7 +113,7 @@ public Task_StrafesCheck(ent)
 	new Float:fVelocity[3];
 	for(new id = 1; id <= g_iMaxPlayers; id++)
 	{
-		if(!is_user_alive(id))
+		if(!is_user_alive(id) || is_user_bot(id))
 		{
 			g_iStrafes[id] = 0;
 			continue;
@@ -123,7 +126,7 @@ public Task_StrafesCheck(ent)
 			fVelocity[1] *= 0.2;
 			set_pev(id, pev_velocity, fVelocity);
 			UTIL_LogUser(id, "CheatStrafes: %d strafes in %.1f sec", g_iStrafes[id], TASK_TIME);
-			//PunishPlayer(id, "CheatStrafes");
+			PunishPlayer(id, "CheatStrafes");
 		}
 		g_iStrafes[id] = 0;
 	}
@@ -140,7 +143,7 @@ public Task_RemoveIgnore(id)
 }
 public FM_CmdStart_Pre(id, uc_handle, seed)
 {
-	if(!is_user_alive(id) || g_bIgnore[id]) return FMRES_IGNORED;		
+	if(!is_user_alive(id) || g_bIgnore[id] || is_user_bot(id)) return FMRES_IGNORED;		
 	
 	new iFlags = pev(id, pev_flags);
 	new Float:fVelocity[3]; pev(id, pev_velocity, fVelocity);
@@ -215,7 +218,7 @@ public FM_CmdStart_Pre(id, uc_handle, seed)
 		
 		if(++g_iPunishWarningMove[id] >= MAX_PUNISHWARNING && !g_bBanned[id])
 		{
-			//PunishPlayer(id, "CheatMove");
+			PunishPlayer(id, "CheatMove");
 			g_iPunishWarningMove[id] = 0;
 		}
 	}
@@ -228,7 +231,7 @@ public FM_CmdStart_Pre(id, uc_handle, seed)
 }
 public FM_PlayerPreThink_Pre(id)
 {
-	if(!is_user_alive(id)) return FMRES_IGNORED;
+	if(!is_user_alive(id) || is_user_bot(id)) return FMRES_IGNORED;
 	
 	new bool:bOnGround = bool:(pev(id, pev_flags) & FL_ONGROUND);
 	
@@ -277,7 +280,7 @@ public FM_PlayerPreThink_Pre(id)
 		
 		if(++g_iPunishWarningKeys[id] >= MAX_PUNISHWARNING)
 		{
-			//PunishPlayer(id, "CheatKeys");
+			PunishPlayer(id, "CheatKeys");
 			g_iPunishWarningKeys[id] = 0;
 		}
 	}
@@ -287,7 +290,21 @@ public FM_PlayerPreThink_Pre(id)
 stock PunishPlayer(id, reason[])
 {
 	g_bBanned[id] = true;
-	server_cmd("amx_ban 0 #%d %s", get_user_userid(id), reason);
+	new punishType = get_cvar_num("ac_strafe_punish");
+	switch(punishType)
+	{
+		case 0:
+		{
+			server_cmd("amx_kick #%d %s", get_user_userid(id), reason);
+		}
+		case 1:
+		{
+			server_cmd("amx_ban 0 #%d %s", get_user_userid(id), reason);
+		}
+		default:
+		{
+		}
+	}
 }
 vec_diff(Float:vec[3], Float:new_vec[3], Float:old_vec[3])
 {
