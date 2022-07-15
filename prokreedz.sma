@@ -653,7 +653,7 @@ new g_szMapName[32];
 // =================================================================================================
 public plugin_init()
 {
-	register_plugin("ProKreedz", VERSION, "P & nucLeaR & p4ddY")
+	register_plugin("ProKreedz", VERSION, "NucLeaR & p4ddY & P")
 
 	g_maxplayers = get_maxplayers()
 	mp_timelimit = get_cvar_pointer("mp_timelimit")
@@ -6358,7 +6358,7 @@ public kz_menu(id)
 	if(!isMapFound)	formatex(MapInfo, charsmax(MapInfo), "Unknown");
 	new hostName[64];
 	get_cvar_string( "hostname", hostName, charsmax(hostName) );
-	formatex(title, charsmax(title), "\r#%s ^n\dBased on \yProkreedz V2.31 \d Edited by \yAzuki daisuki~^n\dPresent time %s^nMap \y%s\d & Timeleft \y%d:%02d^n\dType map \y%s", hostName, thetime, MapName, tl/60, tl%60, MapInfo);
+	formatex(title, charsmax(title), "\r#%s ^n\dBased on \yProkreedz V2.31 \d Edited by \yAzuki daisuki~^n\dSource code from \ywww.cskzcn.com \d^n\dPresent time %s^nMap \y%s\d & Timeleft \y%d:%02d^n\dType map \y%s", hostName, thetime, MapName, tl/60, tl%60, MapInfo);
 	
 	new menu = menu_create(title, "MenuHandler")  
 	new msgctspec[64];
@@ -6433,14 +6433,57 @@ public MenuHandler(id , menu, item)
 		}
 		case 6:
 		{
-			if(callfunc_begin("cmdMeasure","measure.amxx") == 1) 
-			{
-				callfunc_push_int(id)
-				callfunc_end()
-			}
+			otherServersMenu(id);
 		}
 	}
 	return PLUGIN_HANDLED
+}
+public otherServersMenu(id)
+{
+	new menu = menu_create("\r# \r转服菜单 \y| \rKreedz Servers Menu^n", "otherServersMenuHandler")
+	menu_additem(menu, "121.4.105.22:23233 \y[ Yoiz's Home Kz Server! ] \w", "1");
+	menu_additem(menu, "mc5.rhymc.com:30359 \y[ New Yoiz's Home Kz Server! ] \w", "2");
+	menu_additem(menu, "121.5.233.247:27015 \y[ Aot1an.Guao孤傲猛男团#2 ] \w", "3");
+
+	menu_display(id, menu, 0);
+	return PLUGIN_HANDLED;
+}
+
+public otherServersMenuHandler(id, menu, item)
+{
+	if( item == MENU_EXIT )
+	{
+		menu_destroy(menu)
+		return PLUGIN_HANDLED;
+	}
+	switch(item)
+	{
+		case 0:
+		{
+			console_print(id, "============================");
+			console_print(id, "connect 121.4.105.22:23233");
+			console_print(id, "============================");
+		}
+		case 1:
+		{
+			console_print(id, "============================");
+			console_print(id, "connect mc5.rhymc.com:30359");
+			console_print(id, "============================");
+		}
+		case 2:
+		{
+			console_print(id, "============================");
+			console_print(id, "connect 121.5.233.247:27015");
+			console_print(id, "============================");
+		}
+		default:
+		{
+
+		}
+	}
+	client_print(id, print_chat, "[Kz]转服相关指令已发送至控制台，请自行打开控制台复制执行手动转服!");
+	otherServersMenu(id);
+	return PLUGIN_HANDLED;
 }
 
 public DuelMenu(id)
@@ -6880,7 +6923,7 @@ public AdminMenuHandler (id, menu, item, level, cid)
 				AdminMenu(id);
 				return PLUGIN_HANDLED
 			}
-			client_cmd(id, "messagemode amx_map");
+			client_cmd(id, "messagemode amx_map ");
 			ColorChat(id, Color:5, "^x04%s^x01 请输入^x03 地图名...", prefix);
 			ColorChat(id, Color:5, "^x04%s^x01 请输入^x03 地图名...", prefix);
 			ColorChat(id, Color:5, "^x04%s^x01 请输入^x03 地图名...", prefix);
@@ -7338,6 +7381,7 @@ public ServerInfo_Console(id)
         client_cmd(id, "echo ^"                                       IP:        %s              ^"", ip)
         client_cmd(id, "echo ^"                        -------------------------------------------------------------^"")
         client_cmd(id, "echo ^"                        Based on Prokreedz V2.31 ☺              ^"")
+        client_cmd(id, "echo ^"                        Source code from www.cskzcn.com ☺              ^"")
         client_cmd(id, "echo ^"                        Edited by Azuki daisuki~ ☺              ^"")
         client_cmd(id, "echo ^"                        Special thanks to XiaoKz & Perfectslife ☺              ^"")
         client_cmd(id, "echo ^"                =========================================^"")
