@@ -710,7 +710,7 @@ public taskCheckVotes()
 	// 服内有活人则统计winner 否则自动换下张图
 	if (0 < pnum)
 	{
-		i = 1;
+		i = 0;
 		while (i < 7)
 		{
 			if (g_iMapVotes[g_iWinner] < g_iMapVotes[i])

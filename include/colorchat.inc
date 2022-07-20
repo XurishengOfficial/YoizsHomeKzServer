@@ -33,7 +33,7 @@ new TeamName[][] =
  * 根据传入不定格式化字符串实现左下角自定义颜色字符串显示
  *
  * @param id		需要显示的玩家id
- * @param type		颜色类型 NORMAL: 普通输出颜色; GREEN：绿色; 前两种仅仅影响其后跟随的字符串; RED/BLUE: 所有格式化的字符串颜色均被统一为 红/蓝
+ * @param type		^x03为type指定颜色(所有颜色均可) ^x01固定normal ^x04固定绿色
  * @param fmt		The format string to display.  Do not put the "ADMIN:" prefix in this.
  */
 

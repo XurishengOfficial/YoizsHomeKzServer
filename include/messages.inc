@@ -16,6 +16,27 @@
  * You may generate menu, smoke, shockwaves, thunderlights,
  * intermission and many many others messages.
  * See HL SDK for more examples. */
+/**
+* Marks the beginning of a client message.
+*
+* @note You may generate menus, smoke, shockwaves, thunderlights,
+*       intermission and many other messages.
+* @note For a list of HL game events, visit https://wiki.alliedmods.net/Half-Life_1_Game_Events
+* @note For a list of HL engine messages, visit https://wiki.alliedmods.net/Half-Life_1_Engine_Messages
+* @note You may also refer to the messages_const.inc file for examples.
+* @note Each message starts with a message_begin() or message_begin_f() function
+*       and ends with message_end(). The specific message arguments go in between
+*       these two by using the write_*() functions found in messages.inc.
+*
+* @param dest        Destination type (see MSG_* constants in messages_const.inc)
+* @param msg_type    Message id
+* @param origin      Message origin
+* @param player      Client index receiving the message or 0 for all clients
+*
+* @noreturn
+* @error             If an invalid message id is specified or an invalid number
+*                    of parameters is passed, an error will be thrown.
+*/
 native message_begin(dest, msg_type, const origin[3] = {0,0,0}, player = 0);
 native message_end();
 native write_byte(x);

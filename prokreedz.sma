@@ -467,6 +467,7 @@ new Topdir[128]
 new kz_type_wr_num
 new kz_startmoney
 new kz_damage
+new kz_godmode
 new kz_checkpoints
 new kz_checkpoints_num;
 new kz_spawn_mainmenu
@@ -669,7 +670,7 @@ public plugin_init()
 	kz_chatorhud = register_cvar("kz_chatorhud", "2") 
 	kz_startmoney = register_cvar("kz_startmoney", "1337")  
 	kz_chat_prefix = register_cvar("kz_chat_prefix", "[KZ]")
-	kz_hud_color = register_cvar("kz_hud_color", "12 122 221")
+	kz_hud_color = register_cvar("kz_hud_color", "255 255 255")
 	kz_other_weapons = register_cvar("kz_other_weapons","1") 
 	kz_drop_weapons = register_cvar("kz_drop_weapons", "0")
 	kz_remove_drops = register_cvar("kz_remove_drops", "1")
@@ -686,7 +687,8 @@ public plugin_init()
 	kz_vip = register_cvar("kz_vip","1")
 	kz_respawn_ct = register_cvar("kz_respawn_ct", "1")
 	kz_semiclip = register_cvar("kz_semiclip", "1")
-	kz_damage = register_cvar("kz_damage", "1") //1=CT和T打枪无伤害  0=正常
+	kz_damage = register_cvar("kz_damage", "1") // 1=CT和T打枪无伤害  0=正常
+	kz_godmode = register_cvar("kz_godmode", "1") // 1 = godmode
 	// kz_semiclip_transparency = register_cvar ("kz_semiclip_transparency", "85")
 	kz_spec_saves = register_cvar("kz_spec_saves", "1")
 	kz_save_autostart = register_cvar("kz_save_autostart", "1")
@@ -5548,7 +5550,8 @@ public FwdHamDoorSpawn( iEntity )
 
 public eventHamPlayerDamage(id, weapon, attacker, Float:damage, damagebits) 
 {
-	
+	set_user_godmode(id, get_pcvar_num(kz_godmode));	// godmode
+
 	if (get_pcvar_num(kz_damage) == 1)
 	{
 		if(!is_user(id) || attacker || weapon) 
@@ -6376,7 +6379,7 @@ public kz_menu(id)
 	menu_vadditem(menu, "4", _, _, "%L", id, "KZ_MAINMENG_MENU4")
 	menu_vadditem(menu, "5", _, _, "%L^n", id, "KZ_MAINMENG_MENU5")
 	menu_additem( menu, msgctspec, "6")
-	menu_vadditem(menu, "7", _, _, "%L", id, "KZ_MAINMENG_MENU7")
+	menu_vadditem(menu, "7", _, _, "%L \r*New*", id, "KZ_MAINMENG_MENU7")
 
 	menu_display(id, menu, 0)
 
@@ -6440,7 +6443,9 @@ public MenuHandler(id , menu, item)
 }
 public otherServersMenu(id)
 {
-	new menu = menu_create("\r# \r转服菜单 \y| \rKreedz Servers Menu^n", "otherServersMenuHandler")
+	new title[256];
+	formatex(title, charsmax(title), "\r# \r转服菜单 \y| \rKreedz Servers Menu^n\d由于正版屏蔽了Connect指令^n请玩家选择后自行到控制台拷贝转服指令进行手动跳转\w");
+	new menu = menu_create(title, "otherServersMenuHandler")
 	menu_additem(menu, "121.4.105.22:23233 \y[ Yoiz's Home Kz Server! ] \w", "1");
 	menu_additem(menu, "mc5.rhymc.com:30359 \y[ New Yoiz's Home Kz Server! ] \w", "2");
 	menu_additem(menu, "121.5.233.247:27015 \y[ Aot1an.Guao孤傲猛男团#2 ] \w", "3");

@@ -24,7 +24,7 @@ stock set_dhudmessage( red = 0, green = 160, blue = 0, Float:x = -1.0, Float:y =
     __dhud_color       = pack_color( clamp_byte( red ), clamp_byte( green ), clamp_byte( blue ) );
     __dhud_x           = _:x;
     __dhud_y           = _:y;
-    __dhud_effect      = effects;
+    __dhud_effect      = effects;   // 0:不知道怎么描述效果 1:直接显示 2:滚动显示
     __dhud_fxtime      = _:fxtime;
     __dhud_holdtime    = _:holdtime;
     __dhud_fadeintime  = _:fadeintime;

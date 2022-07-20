@@ -275,7 +275,7 @@ public plugin_init() {
     //post设置为0 无效 可能是模型覆盖?
     RegisterHam(Ham_Item_Deploy, "weapon_usp" , "hamusp", 1);
     RegisterHam(Ham_Item_Deploy, "weapon_knife" , "hamknife", 1);
-    RegisterHam(Ham_TakeDamage, "player", "fw_TakeDamage");
+    // RegisterHam(Ham_TakeDamage, "player", "fw_TakeDamage");
 
     // 玩家菜单是否能更换皮肤
     // register_clcmd( "say /myskin",     "SkinsMenu" );

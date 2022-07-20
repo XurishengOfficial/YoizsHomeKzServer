@@ -457,7 +457,7 @@ native parse_time(const input[],const format[], time = -1);
 
 /* Calls function on specified time.
 * Flags:
-* "a" - repeat.
+* "a" - repeat. timer will repeat set times(default 0 last para)
 * "b" - loop task.
 * "c" - do task on time after a map timeleft.
 * "d" - do task on time before a map timelimit. */
