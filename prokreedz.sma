@@ -129,7 +129,7 @@ mpbhop.amxx
 #include <orpheu_stocks>
 #include <sockets>	
 #include <string2>//ID字符转换
-#include <colorchat1>
+#include <colorchat>
 #include <geoip>
 #include <ipseeker>
 // #include <kz>
@@ -655,7 +655,6 @@ new g_szMapName[32];
 public plugin_init()
 {
 	register_plugin("ProKreedz", VERSION, "NucLeaR & p4ddY & P")
-
 	g_maxplayers = get_maxplayers()
 	mp_timelimit = get_cvar_pointer("mp_timelimit")
 	register_menucmd(register_menuid("ServerMenu", 0), 1023, "handleServerMenu");
@@ -6916,9 +6915,9 @@ public AdminMenuHandler (id, menu, item, level, cid)
 				new szName[32];
 				get_user_name(id, szName, charsmax(szName));
 				if(is_user_kz_admin(id) || is_user_main_admin(id))
-					ColorChat(0, Color:5, "^x04%s^x01 Admin: ^x03%s^x01 Force^x04 Start the Vote.", prefix, szName);
+					ColorChat(0, RED, "^x04%s^x01 Admin: ^x03%s^x01 Force^x04 Start the Vote.", prefix, szName);
 				else if(is_user_vip(id))
-					ColorChat(0, Color:5, "^x04%s^x01 VIP: ^x03%s^x01 Force^x04 Start the Vote.", prefix, szName);
+					ColorChat(0, BLUE, "^x04%s^x01 VIP: ^x03%s^x01 Force^x04 Start the Vote.", prefix, szName);
 			}	
 		}
 		case 3:
@@ -9689,7 +9688,7 @@ IsSliding(id)
 	pev(id, pev_origin, origin);
 	dest[0] = origin[0];
 	dest[1] = origin[1];
-	dest[2] = origin[2] - 1;	// 1
+	dest[2] = origin[2];	// 1
 	new ptr = create_tr2();
 	new var1;
 	if (flags & FL_DUCKING)	// DUCKING

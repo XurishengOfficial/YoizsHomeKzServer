@@ -17,6 +17,7 @@ public plugin_init() {
     register_clcmd("say /wt", "cmdWallTouchHelper");
     RegisterHam(Ham_Touch, "player", "FwdPlayerTouch");
     g_msgDamage = get_user_msgid("Damage");
+    set_task(650.0, "taskShowWTHelpInfo", _, _, _, "b", _);
 }
 
 // public Touch(id, ent) {
@@ -74,11 +75,45 @@ stock showDmgHud(id, const Float:wallOrigin[3], const Float:playerOrigin[3])
     write_coord(origin[2]) // z
     message_end()
 }
+
+
+IsSliding(id)
+{
+	if (!is_user_alive(id)) return 0;
+
+	new flags = entity_get_int(id, EV_INT_flags);
+	if (flags & FL_ONGROUND)	return 0; // Ground
+
+	new Float:origin[3] = 0.0;
+	new Float:dest[3] = 0.0;
+	pev(id, pev_origin, origin);
+	dest[0] = origin[0];
+	dest[1] = origin[1];
+	dest[2] = origin[2];	// 1
+	new ptr = create_tr2();
+	new var1;
+	if (flags & FL_DUCKING)	// DUCKING
+		var1 = 3;
+	else
+		var1 = 1;
+	engfunc(EngFunc_TraceHull, origin, dest, 0, var1, id, ptr);
+	new Float:flFraction = 0.0;
+	get_tr2(ptr, 4, flFraction);
+	if (flFraction >= 1.0)
+	{
+		free_tr2(ptr);
+		return 0;
+	}
+	get_tr2(ptr, 7, dest);
+	free_tr2(ptr);
+	return dest[2] <= 0.7;
+}
+
 public FwdPlayerTouch(id, ent)
 {
     if(!g_bWTEnabled[id]) return;
     new Float:origin[3];
-    if(pev(id, pev_flags) & FL_ONGROUND2) return;
+    if( (pev(id, pev_flags) & FL_ONGROUND2) || IsSliding(id) ) return;
     entity_get_vector(id, EV_VEC_origin, origin)
     
     new hull = (get_entity_flags(id) & FL_DUCKING) ? HULL_HEAD : HULL_HUMAN // 蹲下时使用ducking的hitbox
@@ -98,4 +133,9 @@ public FwdPlayerTouch(id, ent)
             // return;
         }
     }
+}
+
+public taskShowWTHelpInfo()
+{
+    ColorChat(0, TEAM_COLOR, "^x04[KZ] ^x01输入指令^x03 /wt ^x01开启^x03撞墙提示 [测试中]");
 }

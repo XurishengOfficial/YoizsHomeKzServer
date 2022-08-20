@@ -30,7 +30,7 @@ public taskPrintInfo(args[]) {
     ipseeker(ip, _, country, charsmax(country), 1);
     // log_amx("Login: ^"%s<%d><%s><>^" became an admin (account ^"%s^") (access ^"%s^") (address ^"%s^")", name, get_user_userid(id), authid, AuthData, sflags, ip)
     server_print("[logInfo.amxx] Join: ^"%s^" (account ^"%s^") (address ^"%s^") (From ^"%s^") joined the game" , name, steamId, ip, country);
-    ColorChat(0, GREEN,  "[Holo]^x01玩家 ^x03%s ^x01加入了游戏, 来自^x03%s", name, country);
+    ColorChat(0, TEAM_COLOR,  "^x04[Holo]^x01玩家 ^x03%s ^x01加入了游戏, 来自^x03%s", name, country);
     // new datadir[64];
     // new logInfoFilePath[64];
     

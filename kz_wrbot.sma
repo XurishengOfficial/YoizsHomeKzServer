@@ -1404,6 +1404,8 @@ public ReadParsed( iEnt )
 	}
 
 	return false;
+	// sum | iDemoEntry[ubuttons] | ViewAngles[0] | ViewAngles[1] | Origin[0] | Origin[1] | Origin[2] | velocity[0] | velocity[1] | velocity[2]
+	// velocity[2] = 0.0
 }
 public ReadFrames( file )
 {
