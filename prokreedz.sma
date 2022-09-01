@@ -380,7 +380,6 @@ new Wpn_Country[104][8]//TOP显示国旗
 new g_maxplayers;
 new max_players;
 new Float:gCheckpointAngle[33][3];	
-new Float:gLastCheckpointAngle[33][3];
 new Float:gCheckpointStartAngle[33][3]
 new Float:gLastCheckpointStartAngle[33][3];
 new Float:CheckpointStarts[33][2][3]
@@ -410,11 +409,11 @@ new SavedOrigins[33][3]
 new SavedVelocity[33][3]
 new Float:pausedvelocity[33][3]	
 
-new bool:gCheckpoint[33];  
 new bool:gCheckpointStart[33];  
 new bool:g_bCpAlternate[33]
 new bool:g_bInPauseCpAlternate[33]
 new bool:g_bCpAlternateStart[33]
+new bool:g_bCancelGoCheck[33]
 new bool:timer_started[33]
 new bool:IsPaused[33]
 new bool:WasPlayed[33]
@@ -3286,7 +3285,7 @@ public Pause(id)
 		if( ( (!( pev( id, pev_flags ) & FL_ONGROUND2 ) && !IsOnLadder(id) ) || (equal(entname, "func_door") && !IsOnLadder(id))) && timer_started[id] && !tptostart[id])
 		{
 			if(pev(id, pev_movetype) != MOVETYPE_NOCLIP) {	// 保证了在梯子上使用Noclip也可以暂停计时: 使用noclip后 如果在梯子上 movetype从MOVETYPE_ARI -> MOVETYPE_NOCLIP 需要放行NOCLIP以暂停
-				client_print(id, print_chat, "KZ_GROUND_PAUSE");
+				// client_print(id, print_chat, "KZ_GROUND_PAUSE");
 				kz_chat(id, "%L", id, "KZ_GROUND_PAUSE")	//必须在地面上或者梯子上才能暂停计时
 				return PLUGIN_HANDLED
 			}
@@ -4692,30 +4691,20 @@ public CheckPoint(id)
 		return PLUGIN_HANDLED
 	}
 	
-	if (gCheckpoint[id]) {
-		gLastCheckpointAngle[id][0]=gCheckpointAngle[id][0]
-		gLastCheckpointAngle[id][1]=gCheckpointAngle[id][1]
-		gLastCheckpointAngle[id][2]=gCheckpointAngle[id][2]
-	}
-	
-	pev(id, pev_v_angle, gCheckpointAngle[id]); 
-	new curCheckPoint[CheckPointData];
-	pev(id, pev_v_angle, curCheckPoint[flVAngle]);
-
-	gCheckpoint[id]=true;
-	
 	// 暂停存点 没有保存角度
 	if( IsPaused[id] )
 	{
 		kz_chat(id, "%L", id, "KZ_CHECKPOINT_INPAUSE")
 		pev(id, pev_origin, InPauseCheckpoints[id][g_bInPauseCpAlternate[id] ? 1 : 0])
+		pev(id, pev_v_angle, gCheckpointAngle[id]); 
 		g_bInPauseCpAlternate[id] = !g_bInPauseCpAlternate[id]
-		inpausechecknumbers[id]++
+		inpausechecknumbers[id]++;
+
 		return PLUGIN_CONTINUE
 	}
-	
-	// pev(id, pev_origin, Checkpoints[id][g_bCpAlternate[id] ? 1 : 0])
-	// g_bCpAlternate[id] = !g_bCpAlternate[id];
+
+	new curCheckPoint[CheckPointData];
+	pev(id, pev_v_angle, curCheckPoint[flVAngle]);
 	checknumbers[id]++;
 
 	pev(id, pev_origin, curCheckPoint[flPos]);
@@ -4779,12 +4768,7 @@ public GoCheck(id)
 		kz_chat(id, "%L", id, "KZ_NOT_ALIVE")
 		return PLUGIN_HANDLED
 	}
-	
-	if( checknumbers[id] == 0 && inpausechecknumbers[id] == 0) 
-	{
-		kz_chat(id, "%L", id, "KZ_NOT_ENOUGH_CHECKPOINTS")	
-		return PLUGIN_HANDLED
-	}
+
 #if defined KZ_DUEL
 	if(kz_player_duel_cp(id))
 	{
@@ -4792,26 +4776,15 @@ public GoCheck(id)
 		return PLUGIN_HANDLED
 	}
 #endif	
-	// 读点后用于取消读点 
-	pev(id, pev_origin, unDoCheckPoint[id][flPos]);
-	pev(id, pev_v_angle, unDoCheckPoint[id][flVAngle]);
 
-	new curCheckPoint[CheckPointData];
-	// e.g. 存点存在0 index++后指向 1, 读取时读取0
-	new curCheckPointIndex = g_CheckPointIndex[id] - 1;
-	if(curCheckPointIndex < 0) curCheckPointIndex = ArraySize(g_CheckPointArray[id]) - 1;
-	ArrayGetArray(g_CheckPointArray[id], curCheckPointIndex, curCheckPoint);
-	// 设置角度
-	if( tpfenabled[id] || gc1[id] )
-	{
-		// set_pev( id, pev_angles, gCheckpointAngle[id]);
-		set_pev( id, pev_angles, curCheckPoint[flVAngle]);
-		set_pev( id, pev_fixangle, 1);
-	}
-	
 	// 暂停读点设置坐标
-	if( IsPaused[id] && inpausechecknumbers[id] > 0)
+	if( IsPaused[id])
 	{
+		if(inpausechecknumbers[id] <= 0)
+		{
+			kz_chat(id, "%L", id, "KZ_NOT_ENOUGH_CHECKPOINTS")	
+			return PLUGIN_HANDLED
+		}
 		kz_chat(id, "%L", id, "KZ_TELEPORT_INPAUSE")	
 		set_pev( id, pev_velocity, Float:{0.0, 0.0, 0.0} );
 		set_pev( id, pev_view_ofs, Float:{  0.0,   0.0,  12.0 } );
@@ -4821,9 +4794,54 @@ public GoCheck(id)
 		engfunc( EngFunc_SetSize, id, {-16.0, -16.0, -18.0 }, { 16.0, 16.0, 32.0 } );
 		set_pev( id, pev_angles, gCheckpointAngle[id]);
 		set_pev(id, pev_origin, InPauseCheckpoints[ id ][ !g_bInPauseCpAlternate[id] ] )
+		g_bCancelGoCheck[id] = false;
 		return PLUGIN_HANDLED
 	}
 
+	if(checknumbers[id] == 0)
+	{
+		kz_chat(id, "%L", id, "KZ_NOT_ENOUGH_CHECKPOINTS")	
+		return PLUGIN_HANDLED
+	}
+
+	// 读点后用于取消读点 
+	if (timer_started[id] && !IsPaused[id])
+	{
+		g_bCancelGoCheck[id] = true;
+	}
+	else
+	{
+		g_bCancelGoCheck[id] = false;
+	}
+	// 读点时会记录读点时玩家位置A并保存 此处进行该位置A的合法性检查
+	static entname[33];
+	pev(pev(id, pev_groundentity), pev_classname, entname, 32)
+	if (equal(entname, "func_door") && !SlideMap && !IsOnLadder(id) && !IsSliding(id))
+	{
+		g_bCancelGoCheck[id] = false;
+	}
+	if ( !( pev( id, pev_flags ) & FL_ONGROUND2 ) && !IsOnLadder(id) && !IsSliding(id) )
+	{
+		g_bCancelGoCheck[id] = false;
+	}
+	if (g_bCancelGoCheck[id])
+	{
+		pev(id, pev_origin, unDoCheckPoint[id][flPos]);
+		pev(id, pev_v_angle, unDoCheckPoint[id][flVAngle]);	
+	}
+
+	new curCheckPoint[CheckPointData];
+	// e.g. 存点存在0 index++后指向 1, 读取时读取0
+	new curCheckPointIndex = g_CheckPointIndex[id] - 1;
+	if(curCheckPointIndex < 0) curCheckPointIndex = ArraySize(g_CheckPointArray[id]) - 1;
+	ArrayGetArray(g_CheckPointArray[id], curCheckPointIndex, curCheckPoint);
+	// 设置角度
+	if( tpfenabled[id] || gc1[id] )
+	{
+		set_pev( id, pev_angles, curCheckPoint[flVAngle]);
+		set_pev( id, pev_fixangle, 1);
+	}
+	
 	// 计时读点设置坐标
 	set_pev( id, pev_velocity, Float:{0.0, 0.0, 0.0} );
 	set_pev( id, pev_view_ofs, Float:{  0.0,   0.0,  12.0 } );
@@ -4831,10 +4849,7 @@ public GoCheck(id)
 	set_pev( id, pev_fuser2, 0.0 );
 	set_pev( id, pev_gravity, 1.0);
 	engfunc( EngFunc_SetSize, id, {-16.0, -16.0, -18.0 }, { 16.0, 16.0, 32.0 } );
-	// set_pev(id, pev_origin, Checkpoints[ id ][ !g_bCpAlternate[id] ] );
-
-	// server_print("GoCheck: curCheckPointIndex is %d, g_CheckPointIndex[id] is %d", curCheckPointIndex, g_CheckPointIndex[id]);
-	set_pev(id, pev_origin, curCheckPoint[flPos]);
+	set_pev( id, pev_origin, curCheckPoint[flPos]);
 	
 	if (timer_started[id] && !IsPaused[id])
 	{
@@ -4843,11 +4858,10 @@ public GoCheck(id)
 			client_cmd(id, "spk fvox/blip");
 			WasPlayed[id] = true
 		}
-		// gochecknumbers[id]++
 	}
-	
-	gochecknumbers[id]++
-	
+
+	gochecknumbers[id]++;
+
 	return PLUGIN_HANDLED
 }
 
@@ -4861,7 +4875,12 @@ public Stuck(id)
 	}
 	
 	// 暂停时只有两个回点
-	if(IsPaused[id] && inpausechecknumbers[id] > 1) {
+	if(IsPaused[id]) {
+		if(inpausechecknumbers[id] <= 1)
+		{
+			kz_chat(id, "%L", id, "KZ_NOT_ENOUGH_STUCK_CHECKPOINTS")
+			return PLUGIN_HANDLED
+		}
 		set_pev( id, pev_velocity, Float:{0.0, 0.0, 0.0} )
 		set_pev( id, pev_view_ofs, Float:{  0.0,   0.0,  12.0 })
 		set_pev( id, pev_flags, pev(id, pev_flags) | FL_DUCKING )
@@ -4895,7 +4914,7 @@ public Stuck(id)
 	new lastCheckPointIndex = g_CheckPointIndex[id] - 2;	// index - 1是最新的存点 index是即将要存的点 index-2是上一个存点
 	if(lastCheckPointIndex == -1) lastCheckPointIndex = min( g_MaxCheckPointIndex[id] + 1, ArraySize(g_CheckPointArray[id]) ) - 1;
 	else if(lastCheckPointIndex == -2) lastCheckPointIndex = min( g_MaxCheckPointIndex[id] + 1, ArraySize(g_CheckPointArray[id]) ) - 2;
-	server_print("Stuck: g_CheckPointIndex[id] is %d, lastCheckPointIndex %d", g_CheckPointIndex[id], lastCheckPointIndex);
+	// server_print("Stuck: g_CheckPointIndex[id] is %d, lastCheckPointIndex %d", g_CheckPointIndex[id], lastCheckPointIndex);
 
 	ArrayGetArray(g_CheckPointArray[id], lastCheckPointIndex, lastCheckPoint);
 
@@ -4904,7 +4923,7 @@ public Stuck(id)
 	// 读取完后向前移动
 	g_CheckPointIndex[id]--;
 	if(g_CheckPointIndex[id] < 0) g_CheckPointIndex[id] = min( g_MaxCheckPointIndex[id], ArraySize(g_CheckPointArray[id]) - 1);
-	server_print("After Stuck: g_CheckPointIndex[id] is %d", g_CheckPointIndex[id]);
+	// server_print("After Stuck: g_CheckPointIndex[id] is %d", g_CheckPointIndex[id]);
 	// set_pev(id, pev_origin, Checkpoints[id][g_bCpAlternate[id]] );
 	// g_bCpAlternate[id] = !g_bCpAlternate[id];
 	
@@ -4915,9 +4934,9 @@ public Stuck(id)
 			client_cmd(id, "spk fvox/blip");
 			WasPlayed[id] = true
 		}
-		gochecknumbers[id]++
 	}
 	
+	gochecknumbers[id]++
 	//kz_chat(id, "%L", id, "KZ_GOCHECK", gochecknumbers[id])
 	
 	return PLUGIN_HANDLED;
@@ -4935,6 +4954,7 @@ public reset_checkpoints_array(id) {
 	g_MaxCheckPointIndex[id] = 0;
 	g_CheckPointIndex[id] = 0;
 }
+
 public reset_checkpoints(id) 
 {
 	checknumbers[id] = 0
@@ -4991,7 +5011,7 @@ public reset_checkpoints1(id)
 }
 
 public UndoGoCheck(id) {
-	if(!timer_started[id] || !gochecknumbers[id]) return;	//未读点 不做操作
+	if(!timer_started[id] || !gochecknumbers[id] || !g_bCancelGoCheck[id]) return;	//未读点 不做操作
 	set_pev(id, pev_origin, unDoCheckPoint[id][flPos] );
 	set_pev(id, pev_v_angle, unDoCheckPoint[id][flVAngle]);
 	return;
@@ -6759,7 +6779,7 @@ public JumpMenu(id)
 	formatex(msggolastcheck, 63, "%L^n", id, "KZ_CHECKPOINTS_NUM", get_cvar_num("kz_checkpoints_num"));	// KZ_CHECKPOINTS_NUM = GoLastCheck \r*Max Num %d* || 读上一个存点 \r*最多返回%d个*
 	formatex(msgpause, 63, "%L - [%s\w]^n", id, "KZ_PAUSE", IsPaused[id] ? "\yON" : "\rOFF");
 	formatex(msgSaveAngle, 63, "%L - [%s\w]", id, "KZ_CHECKPOINT_ANGLE", gc1[id] ? "\yON" : "\rOFF");
-	formatex(msgUndoGocheck, 63, ( timer_started[id] && gochecknumbers[id] )? "\y%L" : "\d%L", id, "KZ_UNDOGOCHECK");
+	formatex(msgUndoGocheck, 63, ( timer_started[id] && gochecknumbers[id] && g_bCancelGoCheck[id] )? "\y%L" : "\d%L", id, "KZ_UNDOGOCHECK");
 	// formatex(msgctspec, 63, "%L^n", id, (cs_get_user_team(id) == CS_TEAM_CT) ? "KZ_SPECTATOR" : "KZ_CT")
 	
 	menu_additem( menu, msgcheck, "1" )
