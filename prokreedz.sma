@@ -9688,7 +9688,7 @@ IsSliding(id)
 	pev(id, pev_origin, origin);
 	dest[0] = origin[0];
 	dest[1] = origin[1];
-	dest[2] = origin[2];	// 1
+	dest[2] = origin[2] - 1;	// 1
 	new ptr = create_tr2();
 	new var1;
 	if (flags & FL_DUCKING)	// DUCKING
