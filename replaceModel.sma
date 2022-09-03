@@ -15,9 +15,7 @@
 
 stock const m_pPlayer = 41;
 // new g_has_set_model[33];
-const TaskIndex = 1735
 
-new nubBotId = 0;
 new AZUKI[] = "models/player/azuki/azuki.mdl";
 new COCONUT[] = "models/player/coconut/coconut.mdl";
 new DIONA[] = "models/player/diona_yoizHome/diona_yoizHome.mdl";
@@ -122,6 +120,8 @@ new Trie:steamId_p_knife;
 new bool: G_PLAYER_SET[33];
 new bool: G_USP_SET[33][2];
 new bool: G_KNIFE_SET[33][2];
+
+new bool: g_bHideUspAndKnife[33];
 
 //读取VIP的默认配置文件
 public readCfgFile() {
@@ -282,9 +282,7 @@ public plugin_init() {
     // register_clcmd( "/myskin",     "SkinsMenu" );
     // register_clcmd( "say /mod",     "SkinsMenu" );
     // register_clcmd( "/mod",     "SkinsMenu" );    // RegisterHam(Ham_Spawn, "player" , "fw_playerSpawn", 1);
-    // set_task(673.0, "taskPrintInfo", 0, _, _, "b");
-
-    register_clcmd( "test",     "test" );   //测试模型渲染
+    set_task(673.0, "taskPrintInfo", 0, _, _, "b");
 
     register_cvar("rt", "0");
     register_cvar("rr", "0");
@@ -292,46 +290,33 @@ public plugin_init() {
     register_cvar("rb", "0");
     register_cvar("rm", "0");
 
+    register_clcmd( "say /hw",     "hideUspAndKnife" );
 }
 
 public taskPrintInfo() {
-    // ColorChat(id, GREEN, "%s ^1%L", prefix, id, "KZ_ETIME_ADDNB");		
-    /*
-        ^x01 默认颜色
-        ^x03 White, Red, Blue
-    */
-    // ColorChat(0, GREEN,  "[KZ]^x01 %s^x03 %02i:%02i.%02i^x01 in ^x03%s", "KZ_IMPROVE", 20, 20, 20, "Pro 15");
-    ColorChat(0, GREEN,  "[News]^x01输入 ^x03/mod ^x01或者 ^x03/myskin ^x01可以修改皮肤~");
-    
+    ColorChat(0, TEAM_COLOR,  "^x04[News] ^x01输入 ^x03/hw ^x01可以隐藏当前武器, 仅限USP和Knife, 切换武器后生效!"); 
 }
 
+// 防止BOT/玩家摔死
 public fw_TakeDamage(victim, inflictor, attacker, Float:damage, damage_type) {
     if(is_user_alive(victim)) {
         set_user_godmode(victim, 1);
     }
 }
 
-public test(id) {
-    // register_cvar("amx_renderType", "0");
-    // register_cvar("amx_model_r", "255");
-    // register_cvar("amx_model_g", "255");
-    // register_cvar("amx_model_b", "255");
-    client_print(id, print_chat, "nubBotId is %d", nubBotId);
-    set_user_rendering(nubBotId, get_cvar_num("rt"), get_cvar_num("rr"), get_cvar_num("rg"), get_cvar_num("rb"), get_cvar_num("rm"), 16);
+public hideUspAndKnife(id)
+{
+    g_bHideUspAndKnife[id] = !g_bHideUspAndKnife[id];
+    set_pev(id, pev_viewmodel, ""); // 切枪就会被刷走
 }
-// public fw_playerSpawn(id) {
-//     if(is_user_alive(id) || g_has_se t_model[id])
-//         return;
-//     new args[1];
-//     args[0] = id;
-//     set_task(1.0, "changeModel", 0, args, 1);
-// }
+
 public client_putinserver(id) {
 
     //设置模型需要进行延时处理
     new args[1];
     args[0] = id;
     set_task(1.0, "changeModel", 0, args, 1);
+    g_bHideUspAndKnife[id] = false;
 }
 
 public client_disconnect(id) {
@@ -397,6 +382,11 @@ public hamusp(iEntity)
             formatex(steamId, charsmax(steamId), "NUB");
         }
     }
+    if(g_bHideUspAndKnife[id])
+    {
+        set_pev(get_pdata_cbase( iEntity, 41, 4 ), pev_viewmodel2, "");
+        return;
+    }
     if(TrieKeyExists(steamId_v_usp, steamId)) {
         TrieGetString(steamId_v_usp, steamId, v_usp, 64);
         set_pev(get_pdata_cbase( iEntity, 41, 4 ), pev_viewmodel2, v_usp);
@@ -443,6 +433,11 @@ public hamknife(iEntity)
         else if(equal(name, "[NUB]", 5)) {
             formatex(steamId, charsmax(steamId), "NUB");
         }
+    }
+    if(g_bHideUspAndKnife[id])
+    {
+        set_pev(get_pdata_cbase( iEntity, 41, 4 ), pev_viewmodel2, "");
+        return;
     }
     if(TrieKeyExists(steamId_v_knife, steamId)) {
         TrieGetString(steamId_v_knife, steamId, v_knife, 64);
