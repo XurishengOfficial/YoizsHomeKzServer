@@ -455,7 +455,7 @@ public cmdRTV(id)
 		if(g_bAFKing[i]) ++afkPlayersNum;
 	}
 	new curPlayersNum = get_players_num();
-	new needRockNum = floatround( get_pcvar_float(g_pRockPercent) * (curPlayersNum - afkPlayersNum) );
+	new needRockNum = floatround( get_pcvar_float(g_pRockPercent) * (curPlayersNum - afkPlayersNum) - 0.5, floatround_tozero) + 1;
 	if(!g_bRockVoted[id]) 
 	{
 		g_bRockVoted[id] = true;
@@ -577,7 +577,7 @@ public taskShowMapMenu(taskid)
 	{
 		return 0;
 	}
-	static szMenu[1024];
+	static szMenu[2048];
 	static szMinutesLeft[15];
 	g_iCounterVoting[id]--;
 	// 显示15s的投票时间

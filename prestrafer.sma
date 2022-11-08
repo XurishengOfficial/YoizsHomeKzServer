@@ -10,7 +10,7 @@
 
 #define PLUGIN "Simple Prestrafe"
 #define VERSION "1.3"
-#define AUTHOR "Destroman & Perfectslife"
+#define AUTHOR "Destroman"
 
 new bool:g_userConnected[33],bool:g_alive[33];
 new max_players;											///////////////////////////////////////
@@ -295,6 +295,9 @@ public fwdPreThink( id )
 								}
 								else	//超速
 								{	
+									preHudRGB[0] = 255;
+									preHudRGB[1] = 255;
+									preHudRGB[2] = 0;
 									if ( bhopgainspeed[id] > speed[id] )	//超速减速
 									{
 										new szMessage[ 128 ];
@@ -397,6 +400,9 @@ public fwdPreThink( id )
 								}
 								else
 								{
+									preHudRGB[0] = 255;
+									preHudRGB[1] = 255;
+									preHudRGB[2] = 0;
 									if ( bhopgainspeed[id] > speed[id] ) // 超速减速
 									{
 										new szMessage[ 128 ];

@@ -143,7 +143,7 @@ new Float:g_flAngles[33][3];
 new Float:g_flPrevAngles[33][3];
 new Float:g_flFuser2[33];
 new Float:g_flPrevFuser2[33];
-new g_iTouched[33];
+new g_iTouched[33];	// 是否碰到墙
 new g_iPrevTouched[33];
 new g_bNoDuckStatsState[33];
 new g_iFrictionFrames[33];
@@ -1112,7 +1112,7 @@ public plugin_init()
 	RegisterHam(58, "player", "hamPlayerPostThink", xs__ITaskId);
 	RegisterHam(42, "player", "hamPlayerTouch", xs__ITaskId);
 	RegisterHam(42, "trigger_teleport", "hamTeleportTouch", xs__ITaskId);
-	RegisterHam(42, "trigger_push", "hamTouch", xs__ITaskId);
+	RegisterHam(42, "trigger_push", "hamTouch", xs__ITaskId);	// 42 Ham_Think
 	RegisterHam(42, "trigger_gravity", "hamTouch", xs__ITaskId);
 	RegisterHam(42, "func_train", "hamTouch", xs__ITaskId);
 	RegisterHam(42, "func_tracktrain", "hamTouch", xs__ITaskId);
@@ -3493,12 +3493,12 @@ public hamPlayerTouch(id, ent)
 	}
 	decl bool:bGround;
 	new var1;
-	bGround = pev(id, 84) & 512 || g_bLadder[id];
+	bGround = pev(id, 84) & 512 || g_bLadder[id];	//pev_flags & FL_ONGROUND
 	decl bool:bPrevGround;
 	new var2;
 	bPrevGround = g_iPrevFlags[id] & 512 || g_bPrevLadder[id];
 	new var3;
-	if (!bGround && !bPrevGround)
+	if (!bGround && !bPrevGround)	// 前两帧都不在地上 且g_iTouched[id] < 3 则认为撞墙 并设置为1 ?
 	{
 		if (3 > g_iTouched[id])
 		{
@@ -3520,7 +3520,7 @@ public hamTeleportTouch(ent, id)
 	}
 	if (3 > g_iTouched[id])
 	{
-		if (g_setStatsMode[id] == 2)
+		if (g_setStatsMode[id] == 2) // 显示Stat的模式? simple advanced?
 		{
 			g_iTouched[id] = 2;
 		}
@@ -3598,7 +3598,7 @@ public hamPlayerPreThink(id)
 	new bool:bPrevGround = g_iPrevFlags[id] & 512;
 	new var4;
 	bPrevGround = bPrevGround || g_bPrevLadder[id];
-	if (get_gametime() < floatadd(1073741824, g_flLastWeapChange[id]))
+	if (get_gametime() < floatadd(1073741824, g_flLastWeapChange[id]))	// ?
 	{
 		if (!g_iTouched[id])
 		{
@@ -3617,7 +3617,7 @@ public hamPlayerPreThink(id)
 		g_iJumpBug[id] = 3;
 	}
 	new var6;
-	if (g_flPrevVelocity[id][2] < 0.0 && g_flVelocity[id][2] > 0.0)
+	if (g_flPrevVelocity[id][2] < 0.0 && g_flVelocity[id][2] > 0.0)	// ?
 	{
 		g_iTouched[id] = 3;
 	}
