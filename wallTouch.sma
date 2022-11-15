@@ -5,6 +5,7 @@
 #include <hamsandwich>
 #include <colorChat>
 #include <float>
+#include <dhudmessage>
 
 #define VERSION "1.0"
 #define Author "Azuki daisuki~"
@@ -12,6 +13,7 @@
 new g_msgDamage;
 new const FL_ONGROUND2 = ( FL_ONGROUND | FL_PARTIALGROUND | FL_INWATER |  FL_CONVEYOR | FL_FLOAT )
 new g_bWTEnabled[33];
+new Float: offset_d = 10.0;
 
 public plugin_init() {
     register_plugin( "WallTouch", VERSION, Author );
@@ -37,6 +39,32 @@ public plugin_init() {
                     );
 
 */
+// stock showDmgHud(id, const Float:wallOrigin[3], const Float:playerOrigin[3])
+
+public doDmg(id, const Float:dmgOrigin[3])
+{
+    message_begin(MSG_ONE_UNRELIABLE, g_msgDamage, _, id)
+    write_byte(0) // damage save
+    write_byte(1) // damage take
+    write_long(DMG_BULLET) // damage type - DMG_BULLET hlsdk_const
+    write_coord(dmgOrigin[0]) // x
+    write_coord(dmgOrigin[1]) // y
+    write_coord(dmgOrigin[2]) // z
+    message_end()
+}
+
+public showRightTouchHud(id)
+{
+    set_dhudmessage(255, 20, 20, -0.45, -1.0, 0, 0.0, 0.1, 0.0, 0.0);//right >>>
+    show_dhudmessage(id, ">>|");
+}
+
+public showLeftTouchHud(id)
+{
+    set_dhudmessage(255, 20, 20, -0.55, -1.0, 0, 0.0, 0.1, 0.0, 0.0);//left <<<
+    show_dhudmessage(id, "|<<");
+}
+
 public client_putinserver(id)
 {
     g_bWTEnabled[id] = false;
@@ -53,9 +81,9 @@ public cmdWallTouchHelper(id)
     g_bWTEnabled[id] = !g_bWTEnabled[id];
     // ColorChat(id, GREEN,  "%s ^x01Only VIP can addtime!", prefix)
     if(g_bWTEnabled[id])
-        ColorChat(id, BLUE, "^x04[KZ]^x01Wall Touch Helper^x03 enabled!");
+        ColorChat(id, BLUE, "^x04[KZ]^x01Wall Touch Helper^x03 enabled^x01!");
     else
-        ColorChat(id, RED, "^x04[KZ]^x01Wall Touch Helper^x03 disabled!");
+        ColorChat(id, RED, "^x04[KZ]^x01Wall Touch Helper^x03 disabled^x01!");
     return PLUGIN_HANDLED;
 }
 
@@ -115,7 +143,7 @@ public FwdPlayerTouch(id, ent)
 {
     if(!g_bWTEnabled[id]) return;
     new Float:origin[3];
-    if( (pev(id, pev_flags) & FL_ONGROUND2) || IsSliding(id) ) return;
+    if( (pev(id, pev_flags) & FL_ONGROUND2) ) return;
     entity_get_vector(id, EV_VEC_origin, origin)
     
     new hull = (get_entity_flags(id) & FL_DUCKING) ? HULL_HEAD : HULL_HUMAN // 蹲下时使用ducking的hitbox
@@ -133,7 +161,8 @@ public FwdPlayerTouch(id, ent)
         if(trace_hull(temp_origin, hull, id, 1))
         {
             showDmgHud(id, temp_origin, origin);
-            client_print(id, print_chat, "Left Touching 0~90");
+            // client_print(id, print_chat, "Left Touching 0~90");
+            showLeftTouchHud(id);
             return;
         }
         // right
@@ -143,7 +172,8 @@ public FwdPlayerTouch(id, ent)
         if(trace_hull(temp_origin, hull, id, 1))
         {
             showDmgHud(id, temp_origin, origin);
-            client_print(id, print_chat, "Right Touching 0~90");
+            // client_print(id, print_chat, "Right Touching 0~90");
+            showRightTouchHud(id)
             return;
         }
     }
@@ -156,7 +186,8 @@ public FwdPlayerTouch(id, ent)
         if(trace_hull(temp_origin, hull, id, 1))
         {
             showDmgHud(id, temp_origin, origin);
-            client_print(id, print_chat, "Left Touching 90~180");
+            // client_print(id, print_chat, "Left Touching 90~180");
+            showLeftTouchHud(id);
             return;
         }
         // right
@@ -166,7 +197,8 @@ public FwdPlayerTouch(id, ent)
         if(trace_hull(temp_origin, hull, id, 1))
         {
             showDmgHud(id, temp_origin, origin);
-            client_print(id, print_chat, "Right Touching 90~180");
+            // client_print(id, print_chat, "Right Touching 90~180");
+            showRightTouchHud(id)
             return;
         }
     }
@@ -179,7 +211,8 @@ public FwdPlayerTouch(id, ent)
         if(trace_hull(temp_origin, hull, id, 1))
         {
             showDmgHud(id, temp_origin, origin);
-            client_print(id, print_chat, "Left Touching -90~0");
+            // client_print(id, print_chat, "Left Touching -90~0");
+            showLeftTouchHud(id);
             return;
         }
         // right
@@ -189,7 +222,8 @@ public FwdPlayerTouch(id, ent)
         if(trace_hull(temp_origin, hull, id, 1))
         {
             showDmgHud(id, temp_origin, origin);
-            client_print(id, print_chat, "Right Touching -90~0");
+            // client_print(id, print_chat, "Right Touching -90~0");
+            showRightTouchHud(id)
             return;
         }
     }
@@ -202,7 +236,8 @@ public FwdPlayerTouch(id, ent)
         if(trace_hull(temp_origin, hull, id, 1))
         {
             showDmgHud(id, temp_origin, origin);
-            client_print(id, print_chat, "Left Touching -180~-90");
+            // client_print(id, print_chat, "Left Touching -180~-90");
+            showLeftTouchHud(id);
             return;
         }
         // right
@@ -212,7 +247,8 @@ public FwdPlayerTouch(id, ent)
         if(trace_hull(temp_origin, hull, id, 1))
         {
             showDmgHud(id, temp_origin, origin);
-            client_print(id, print_chat, "Right Touching -180~-90");
+            // client_print(id, print_chat, "Right Touching -180~-90");
+            showRightTouchHud(id)
             return;
         }
     }
@@ -236,5 +272,5 @@ public FwdPlayerTouch(id, ent)
 
 public taskShowWTHelpInfo()
 {
-    ColorChat(0, TEAM_COLOR, "^x04[KZ] ^x01输入指令^x03 /wt ^x01开启^x03撞墙提示 [测试中]");
+    ColorChat(0, TEAM_COLOR, "^x04[KZ] ^x01输入指令^x03 /wt ^x01开启^x03撞墙提示 ^x01[2022/11/15新版上线 欢迎使用和反馈]");
 }
